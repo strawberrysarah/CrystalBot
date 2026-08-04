@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits } = require('discord.js');
 const mongoose = require('mongoose'); // <-- Brought MongoDB back!
 const http = require('http');
+const gamblingCooldown = new Set();
 
 // 1. Keeps the bot awake on Render
 http.createServer((req, res) => {
@@ -54,5 +55,43 @@ http.createServer((req, res) => {
 
                                                                                                 // 5. Turn the bot on using your secret token!
                                                                                                 client.login(process.env.TOKEN);
-                                                                                                
+                                                                                                  // ☕ COMMAND: cry!tea
+  if (message.content.toLowerCase() === 'cry!tea') {
+    const teaSpills = [
+      "Someone secretly has a crush on someone... 👀",
+      "I heard someone spent all night watching Demon Slayer instead of sleeping... ⚔️",
+      "Someone's been stressing way too much about genetics and human physiology lately... take a break! 🧬",
+      "Someone was caught blasting Bollywood dance songs on repeat... 💃"
+    ];
+    const randomTea = teaSpills[Math.floor(Math.random() * teaSpills.length)];
+    message.reply(`☕ **Crystal Tea**\n\n${randomTea}`);
+  }
+
+  // 🔮 COMMAND: cry!crystalfortune
+  if (message.content.toLowerCase() === 'cry!crystalfortune') {
+    const fortunes = [
+      "The stars whisper... Today is your lucky day. ✨",
+      "The cosmos align perfectly today. A trip to a dark sky reserve might be in your future! 🌌",
+      "I'm sensing a strong gravitational pull... towards great wealth! 🪐",
+      "Beware! The crystal mines are dangerous today. ⚠️"
+    ];
+    const randomFortune = fortunes[Math.floor(Math.random() * fortunes.length)];
+    message.reply(`🔮 **Crystal Fortune**\n\n"${randomFortune}"`);
+  }
+
+  // 🎰 COMMAND: cry!slots
+  if (message.content.toLowerCase() === 'cry!slots') {
+    if (gamblingCooldown.has(message.author.id)) {
+      return message.reply("⏳ Whoa, slow down! You need to wait 30 seconds before gambling again.");
+    }
+
+    message.reply("🎰 **Crystal Slots**\n\n🍇 🍇 🍇\n\nJACKPOT!\n\n+10,000 Crystals");
+
+    // Puts them in timeout for 30 seconds (30000 ms)
+    gamblingCooldown.add(message.author.id);
+    setTimeout(() => {
+      gamblingCooldown.delete(message.author.id);
+    }, 30000);
+  }
+
                                             

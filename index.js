@@ -34,12 +34,12 @@ http.createServer((req, res) => {
                                           if (message.author.bot) return;
 
                                             // 💎 COMMAND: cry!bal
-                                              if (message.content === '!bal') {
+                                              if (message.content === 'cry!bal') {
                                                   message.reply(`💎 **Crystal Wallet**\n\n👤 User: <@${message.author.id}>\n\n💰 Wallet: 12,450 Crystals\n🏦 Bank: 57,890 Crystals\n\n✨ Total Wealth: 70,340 Crystals`);
                                                     }
 
                                                       // 🤝 COMMAND: cry!hug @user
-                                                        if (message.content.startsWith('!hug')) {
+                                                        if (message.content.startsWith('cry!hug')) {
                                                             const targetUser = message.mentions.users.first();
                                                                 
                                                                     if (targetUser) {

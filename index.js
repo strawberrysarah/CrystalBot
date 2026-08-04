@@ -46,7 +46,7 @@ http.createServer((req, res) => {
                                                                           // Anime GIF added at the end of the text
                                                                                 message.reply(`🤗 <@${message.author.id}> hugged <@${targetUser.id}>! How wholesome! 💜\nhttps://media.giphy.com/media/od5H3PmEG5EVq/giphy.gif`);
                                                                                     } else {
-                                                                                          message.reply("You need to tag someone to hug them! Example: `!hug @Anshika`");
+                                                                                          message.reply("You need to tag someone to hug them! Example: `cry!hug @Anshika`");
                                                                                               }
                                                                                                 }
 

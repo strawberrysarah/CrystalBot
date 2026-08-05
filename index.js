@@ -6,7 +6,7 @@ const http = require('http');
 http.createServer((req, res) => {
   res.write('Bot is awake!');
     res.end();
-    }).listen(3000);
+}).listen(process.env.PORT || 3000);
 
     // 2. Cooldown & Configuration Memory
     const commandCooldowns = new Map();

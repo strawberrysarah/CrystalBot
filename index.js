@@ -2,17 +2,25 @@ const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder, ActionRowB
 const mongoose = require('mongoose');
 const http = require('http');
 
-// Use Render's assigned port dynamically
-const PORT = process.env.PORT || 3000;
+// This is the missing piece that initializes the bot with all required permissions!
+const client = new Client({
+  intents: [
+      GatewayIntentBits.Guilds,
+          GatewayIntentBits.GuildMessages,
+              GatewayIntentBits.MessageContent,
+                  GatewayIntentBits.GuildMembers
+                    ]
+                    });
 
-http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Bot is awake!');
-    }).listen(PORT, () => {
-      console.log(`🌐 HTTP Server running on port ${PORT}`);
-      });
-    
+                    const PORT = process.env.PORT || 10000;
 
+                    http.createServer((req, res) => {
+                      res.writeHead(200, { 'Content-Type': 'text/plain' });
+                        res.end('Bot is awake!');
+                        }).listen(PORT, () => {
+                          console.log(`🌐 HTTP Server running on port ${PORT}`);
+                          });
+                          
     const commandCooldowns = new Map();
     const xpCooldowns = new Set(); 
     const pendingProposals = new Map(); 

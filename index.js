@@ -2,10 +2,16 @@ const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder, ActionRowB
 const mongoose = require('mongoose');
 const http = require('http');
 
+// Use Render's assigned port dynamically
+const PORT = process.env.PORT || 3000;
+
 http.createServer((req, res) => {
-  res.write('Bot is awake!');
-    res.end();
-    }).listen(process.env.PORT || 3000);
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot is awake!');
+    }).listen(PORT, () => {
+      console.log(`🌐 HTTP Server running on port ${PORT}`);
+      });
+    
 
     const commandCooldowns = new Map();
     const xpCooldowns = new Set(); 

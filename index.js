@@ -20,7 +20,7 @@ const client = new Client({
                         }).listen(PORT, () => {
                           console.log(`🌐 HTTP Server running on port ${PORT}`);
                           });
-                          
+
                           
     const commandCooldowns = new Map();
     const xpCooldowns = new Set(); 
@@ -49,19 +49,8 @@ const client = new Client({
                                   let user = await User.findOne({ userId: id });
                                     if (!user) { user = new User({ userId: id }); await user.save(); }
                                       return user;
-                                      }
-
-                                      const client = new Client({
-                                        intents: [ GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers ]
-                                        });
-
-                                        client.once('ready', () => {
-                                          console.log(`🤖 Logged in as ${client.user.tag}`);
-                                            mongoose.connect(process.env.MONGODB_URI)
-                                                .then(() => console.log('✅ Connected to MongoDB!'))
-                                                    .catch((error) => console.log('❌ MongoDB Error:', error));
-                                                    });
-
+                                }
+                                
                                                     const shopItems = {
                                                       'pomegranate seed': { price: 500, icon: '🌱', name: 'Pomegranate Seed', desc: 'Plant this in your garden to start growing!' },
                                                         'coco peat': { price: 800, icon: '🧱', name: 'Coco Peat', desc: 'Fertilizer! Use this to instantly skip a growth stage.' },

@@ -620,86 +620,104 @@ else if (command === 'cry!beg') {
     return message.reply(`📊 I rate <@${targetUser.id}> a **${rating}/10**...\n${response}`);
   }
 
-else if (command === 'cry!ship') {
-    if (!targetUser) return message.reply("Tag someone to ship! `cry!ship @user`");
-    
-    const isVIP = userId === '1471141307400454245' || targetUser.id === '1471141307400454245';
-    const percent = isVIP ? 100 : Math.floor(Math.random() * 101);
+  else if (command === 'cry!ship') {
+        if (!targetUser) return message.reply("Tag someone to ship! `cry!ship @user`");
+            
+                const isVIP = userId === '1471141307400454245' || targetUser.id === '1471141307400454245';
+                    const percent = isVIP ? 100 : Math.floor(Math.random() * 101);
 
-    const name1 = message.author.username;
-    const name2 = targetUser.username;
-    const shipName = name1.substring(0, Math.ceil(name1.length / 2)) + name2.substring(Math.ceil(name2.length / 2));
+                        const name1 = message.author.username;
+                            const name2 = targetUser.username;
+                                const shipName = name1.substring(0, Math.ceil(name1.length / 2)) + name2.substring(Math.ceil(name2.length / 2));
 
-    message.channel.sendTyping(); 
+                                    try {
+                                          await message.channel.sendTyping();
 
-    const canvas = createCanvas(800, 450);
-    const ctx = canvas.getContext('2d');
+                                                const canvas = createCanvas(800, 450);
+                                                      const ctx = canvas.getContext('2d');
 
-    const bgGradient = ctx.createLinearGradient(0, 0, 800, 450);
-    bgGradient.addColorStop(0, '#2a0845'); 
-    bgGradient.addColorStop(1, '#ff3b7c'); 
-    ctx.fillStyle = bgGradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                                            // Gradient background
+                                                                  const bgGradient = ctx.createLinearGradient(0, 0, 800, 450);
+                                                                        bgGradient.addColorStop(0, '#2a0845'); 
+                                                                              bgGradient.addColorStop(1, '#ff3b7c'); 
+                                                                                    ctx.fillStyle = bgGradient;
+                                                                                          ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = '#ffffff';
-    for(let i = 0; i < 50; i++) {
-        ctx.globalAlpha = Math.random() * 0.5 + 0.1;
-        ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
-    }
-    ctx.globalAlpha = 1.0;
+                                                                                                // Sparkles
+                                                                                                      ctx.fillStyle = '#ffffff';
+                                                                                                            for (let i = 0; i < 50; i++) {
+                                                                                                                    ctx.globalAlpha = Math.random() * 0.5 + 0.1;
+                                                                                                                            ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 2, 2);
+                                                                                                                                  }
+                                                                                                                                        ctx.globalAlpha = 1.0;
 
-const avatar1 = await loadImage(message.author.displayAvatarURL({ extension: 'png', size: 256 }));
-    const avatar2 = await loadImage(targetUser.displayAvatarURL({ extension: 'png', size: 256 }));
+                                                                                                                                              // Load Avatars (forced PNG)
+                                                                                                                                                    const u1Avatar = message.author.displayAvatarURL({ extension: 'png', size: 256, forceStatic: true });
+                                                                                                                                                          const u2Avatar = targetUser.displayAvatarURL({ extension: 'png', size: 256, forceStatic: true });
 
-    const drawRoundedAvatar = (img, x, y, size) => {
-        ctx.save();
-        ctx.beginPath();
-        ctx.roundRect(x, y, size, size, 25); 
-        
-        ctx.lineWidth = 8;
-        ctx.strokeStyle = '#ff9ecd';
-        ctx.stroke();
-        ctx.clip();
-        
-        ctx.drawImage(img, x, y, size, size);
-        ctx.restore();
-    };
+                                                                                                                                                                const [avatar1, avatar2] = await Promise.all([
+                                                                                                                                                                        loadImage(u1Avatar),
+                                                                                                                                                                                loadImage(u2Avatar)
+                                                                                                                                                                                      ]);
 
-drawRoundedAvatar(avatar1, 60, 100, 240);
-    drawRoundedAvatar(avatar2, 500, 100, 240);
+                                                                                                                                                                                            const drawRoundedAvatar = (img, x, y, size) => {
+                                                                                                                                                                                                    ctx.save();
+                                                                                                                                                                                                            ctx.beginPath();
+                                                                                                                                                                                                                    if (typeof ctx.roundRect === 'function') {
+                                                                                                                                                                                                                              ctx.roundRect(x, y, size, size, 25);
+                                                                                                                                                                                                                                      } else {
+                                                                                                                                                                                                                                                ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+                                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                                ctx.lineWidth = 8;
+                                                                                                                                                                                                                                                                        ctx.strokeStyle = '#ff9ecd';
+                                                                                                                                                                                                                                                                                ctx.stroke();
+                                                                                                                                                                                                                                                                                        ctx.clip();
+                                                                                                                                                                                                                                                                                                ctx.drawImage(img, x, y, size, size);
+                                                                                                                                                                                                                                                                                                        ctx.restore();
+                                                                                                                                                                                                                                                                                                              };
 
-    ctx.font = 'bold 70px sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    
-    ctx.font = '120px sans-serif';
-    ctx.fillText(percent < 30 ? '💔' : '💖', 400, 245);
-    
-    ctx.font = 'bold 50px sans-serif';
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = '#000000';
-    ctx.strokeText(`${percent}%`, 400, 240);
-    ctx.fillText(`${percent}%`, 400, 240);
+                                                                                                                                                                                                                                                                                                              drawRoundedAvatar(avatar1, 60, 100, 240);
+                                                                                                                                                                                                                                                                                                                    drawRoundedAvatar(avatar2, 500, 100, 240);
 
-    ctx.font = 'bold 25px sans-serif';
-    ctx.fillStyle = '#ff9ecd';
-    ctx.fillText('—— C O M P A T I B I L I T Y ——', 400, 60);
+                                                                                                                                                                                                                                                                                                                          // Center heart and score
+                                                                                                                                                                                                                                                                                                                                ctx.fillStyle = '#ffffff';
+                                                                                                                                                                                                                                                                                                                                      ctx.textAlign = 'center';
+                                                                                                                                                                                                                                                                                                                                            ctx.font = '110px sans-serif';
+                                                                                                                                                                                                                                                                                                                                                  ctx.fillText(percent < 30 ? '💔' : '💖', 400, 240);
 
-    ctx.font = 'italic bold 55px sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(shipName.toUpperCase(), 400, 390);
+                                                                                                                                                                                                                                                                                                                                                        ctx.font = 'bold 52px sans-serif';
+                                                                                                                                                                                                                                                                                                                                                              ctx.lineWidth = 6;
+                                                                                                                                                                                                                                                                                                                                                                    ctx.strokeStyle = '#000000';
+                                                                                                                                                                                                                                                                                                                                                                          ctx.strokeText(`${percent}%`, 400, 240);
+                                                                                                                                                                                                                                                                                                                                                                                ctx.fillText(`${percent}%`, 400, 240);
 
-    const attachment = new AttachmentBuilder(await canvas.encode('png'), { name: 'ship-card.png' });
-    
-    let response = isVIP ? "💖 **100% Match!**\nSarah is literally a perfect match for anyone. It's just science! ✨" 
-        : percent > 80 ? `💖 **${percent}% Match!**\nTrue Love is in the air! W rizz.` 
-        : percent > 50 ? `💕 **${percent}% Match!**\nDefinitely some chemistry here.` 
-        : percent > 20 ? `🤷 **${percent}% Match!**\nMaybe just stay friends bro.` 
-        : `💔 **${percent}% Match!**\nAbsolute negative aura. Keep walking. 💀`;
+                                                                                                                                                                                                                                                                                                                                                                                      // Titles
+                                                                                                                                                                                                                                                                                                                                                                                            ctx.font = 'bold 24px sans-serif';
+                                                                                                                                                                                                                                                                                                                                                                                                  ctx.fillStyle = '#ff9ecd';
+                                                                                                                                                                                                                                                                                                                                                                                                        ctx.fillText('—— C O M P A T I B I L I T Y ——', 400, 60);
 
-    applyCooldown(180000); 
-    return message.reply({ content: response, files: [attachment] });
-  }
+                                                                                                                                                                                                                                                                                                                                                                                                              ctx.font = 'italic bold 50px sans-serif';
+                                                                                                                                                                                                                                                                                                                                                                                                                    ctx.fillStyle = '#ffffff';
+                                                                                                                                                                                                                                                                                                                                                                                                                          ctx.fillText(shipName.toUpperCase(), 400, 395);
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                const buffer = await canvas.toBuffer('image/png');
+                                                                                                                                                                                                                                                                                                                                                                                                                                      const attachment = new AttachmentBuilder(buffer, { name: 'ship.png' });
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                            let response = isVIP ? "💖 **100% Match!**\nSarah is literally a perfect match for anyone. It's just science! ✨" 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                      : percent > 80 ? `💖 **${percent}% Match!**\nTrue Love is in the air! W rizz.` 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                : percent > 50 ? `💕 **${percent}% Match!**\nDefinitely some chemistry here.` 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                          : percent > 20 ? `🤷 **${percent}% Match!**\nMaybe just stay friends bro.` 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    : `💔 **${percent}% Match!**\nAbsolute negative aura. Keep walking. 💀`;
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          applyCooldown(180000);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                return message.reply({ content: response, files: [attachment] });
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    } catch (err) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          console.error("CANVAS ERROR:", err);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                return message.reply(`⚠️ Failed to generate image: \`${err.message}\`. Please verify that \`@napi-rs/canvas\` is installed.`);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      }
+  
 
 else if (command === 'cry!imposter') {
     if (commandCooldowns.has('imposter_lobby')) {

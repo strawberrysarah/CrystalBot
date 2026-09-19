@@ -1,6 +1,8 @@
-const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, AttachmentBuilder } = require('discord.js');
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const mongoose = require('mongoose');
 const http = require('http');
+
 
 http.createServer((req, res) => {
   res.write('Bot is awake!');

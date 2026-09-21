@@ -441,46 +441,134 @@ const shopMessage = await message.reply({ embeds: [generateEmbed(currentPage)], 
     collector.on('end', () => { shopMessage.edit({ components: [] }).catch(() => {}); });
   }
 
-  else if (command === 'cry!buyrole') {
-    const roleName = args.slice(1).join(' ').toLowerCase();
-    if (!roleName) return message.reply(`Please specify a role to buy! Example: \`cry!buyrole Goofy\``);
+    else if (command === 'cry!buyrole') {
+          const roleName = args.slice(1).join(' ').toLowerCase();
+              if (!roleName) return message.reply({ content: "Please specify a role to buy! Example: `cry!buyrole Serendipity`", allowedMentions: { parse: [] } });
 
-    const roleDef = roleshopItems.find(r => r.name.toLowerCase() === roleName);
-    if (!roleDef) return message.reply("❌ Role not found! Check `cry!roleshop` for correct names.");
-    
-    const discordRole = message.guild.roles.cache.get(roleDef.id);
-    if (!discordRole) return message.reply(`⚠️ Could not find that role in the server! Ensure the ID in the code is correct.`);
+                  const roleDef = roleshopItems.find(r => r.name.toLowerCase() === roleName);
+                      if (!roleDef) return message.reply({ content: "❌ Role not found! Check `cry!roleshop` for available names.", allowedMentions: { parse: [] } });
 
-    if (message.member.roles.cache.has(discordRole.id)) return message.reply(`You already own the <@&${discordRole.id}> role!`);
+                          const userData = await getUserData(userId);
+                              if (!userData.roles) userData.roles = [];
 
-    const userData = await getUserData(userId);
-    const isSarah = message.author.username.toLowerCase().includes('sarah') || message.author.id === '1471141307400454245';
+                                  if (userData.roles.includes(roleDef.name)) {
+                                        return message.reply({ content: `You already own the **${roleDef.name}** role! Use \`cry!equip ${roleDef.name}\` to wear it.`, allowedMentions: { parse: [] } });
+                                            }
 
-    if (!isSarah) {
-        if (userData.balance < roleDef.price) {
-            return message.reply(`❌ You need **${roleDef.price.toLocaleString()}** ${cryCoin}, but currently have **${userData.balance.toLocaleString()}**.`);
-        }
-        userData.balance -= roleDef.price;
-        await userData.save();
-    }
+                                                const isVIP = message.author.username.toLowerCase().includes('sarah') || message.author.id === '1471141307400454245';
 
-try {
-        await message.member.roles.add(discordRole);
-        return message.reply(`🎉 You purchased and equipped <@&${discordRole.id}>!${isSarah ? ' *(VIP Free Pass Activated)*' : ` Deducted **${roleDef.price.toLocaleString()}**${cryCoin}.`}`);
-    } catch (err) {
-        return message.reply(`Failed to assign role. Make sure the bot's own role is placed higher than the shop roles in your server settings!`);
-    }
-  }
+                                                    if (!isVIP) {
+                                                          if (userData.balance < roleDef.price) {
+                                                                  return message.reply({ content: `❌ You need **${roleDef.price.toLocaleString()}** ${cryCoin}, but currently have **${userData.balance.toLocaleString()}**.`, allowedMentions: { parse: [] } });
+                                                                        }
+                                                                              userData.balance -= roleDef.price;
+                                                                                  }
 
-  else if (command === 'cry!myroles') {
-    const userData = await getUserData(userId);
-    if (userData.roles.length === 0) return message.reply("You don't own any legacy roles yet!");
-    return message.reply(`🎨 **Your Legacy Unlocked Roles:**\n\n${userData.roles.join('\n')}`);
-  }
+                                                                                      // Save permanently to database
+                                                                                          userData.roles.push(roleDef.name);
+                                                                                              await userData.save();
 
-  else if (command === 'cry!equip' || command === 'cry!unequip') {
-    return message.reply("⚠️ With the new Role Shop update, roles are now instantly equipped to your Discord profile when purchased! You can manage them straight from your Discord profile or ask an admin to remove them.");
-  }
+                                                                                                  // Remove any currently worn shop roles to prevent color overrides
+                                                                                                      const shopRoleIds = roleshopItems.map(r => r.id);
+                                                                                                          for (const rId of shopRoleIds) {
+                                                                                                                if (message.member.roles.cache.has(rId)) {
+                                                                                                                        try { await message.member.roles.remove(rId); } catch (e) {}
+                                                                                                                              }
+                                                                                                                                  }
+
+                                                                                                                                      // Add new role to Discord profile
+                                                                                                                                          const discordRole = message.guild.roles.cache.get(roleDef.id);
+                                                                                                                                              if (discordRole) {
+                                                                                                                                                    try { await message.member.roles.add(discordRole); } catch (e) {}
+                                                                                                                                                        }
+
+                                                                                                                                                            return message.reply({
+                                                                                                                                                                  content: `🎉 You purchased **${roleDef.icon} ${roleDef.name}**! It is now saved in your wardrobe and equipped.\nUse \`cry!equip <name>\` anytime to swap colors.`,
+                                                                                                                                                                        allowedMentions: { parse: [] }
+                                                                                                                                                                            });
+                                                                                                                                                                              }
+
+                                                                                                                                                                                else if (command === 'cry!myroles') {
+                                                                                                                                                                                    const userData = await getUserData(userId);
+                                                                                                                                                                                        const owned = userData.roles || [];
+
+                                                                                                                                                                                            if (owned.length === 0) {
+                                                                                                                                                                                                  return message.reply({ content: "🎒 Your wardrobe is empty! Buy some roles using `cry!buyrole <name>`.", allowedMentions: { parse: [] } });
+                                                                                                                                                                                                      }
+
+                                                                                                                                                                                                          const roleList = owned.map(name => {
+                                                                                                                                                                                                                const def = roleshopItems.find(r => r.name.toLowerCase() === name.toLowerCase());
+                                                                                                                                                                                                                      const icon = def ? def.icon : '✨';
+                                                                                                                                                                                                                            const isEquipped = def && message.member.roles.cache.has(def.id) ? ' *(Equipped)*' : '';
+                                                                                                                                                                                                                                  return `• ${icon} **${name}**${isEquipped}`;
+                                                                                                                                                                                                                                      }).join('\n');
+
+                                                                                                                                                                                                                                          const wardrobeEmbed = new EmbedBuilder()
+                                                                                                                                                                                                                                                .setTitle(`👗 ${message.author.username}'s Wardrobe`)
+                                                                                                                                                                                                                                                      .setDescription(roleList)
+                                                                                                                                                                                                                                                            .setColor('#ff7bb3')
+                                                                                                                                                                                                                                                                  .setFooter({ text: "Use cry!equip <name> to swap your current color!" });
+
+                                                                                                                                                                                                                                                                      return message.reply({ embeds: [wardrobeEmbed], allowedMentions: { parse: [] } });
+                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                          else if (command === 'cry!equip') {
+                                                                                                                                                                                                                                                                              const roleName = args.slice(1).join(' ').toLowerCase();
+                                                                                                                                                                                                                                                                                  if (!roleName) return message.reply({ content: "Specify a role to equip! Example: `cry!equip Serendipity`", allowedMentions: { parse: [] } });
+
+                                                                                                                                                                                                                                                                                      const userData = await getUserData(userId);
+                                                                                                                                                                                                                                                                                          const ownedRole = (userData.roles || []).find(r => r.toLowerCase() === roleName);
+                                                                                                                                                                                                                                                                                              if (!ownedRole) {
+                                                                                                                                                                                                                                                                                                    return message.reply({ content: `🎒 You don't own that role! Check \`cry!myroles\` to see your wardrobe.`, allowedMentions: { parse: [] } });
+                                                                                                                                                                                                                                                                                                        }
+
+                                                                                                                                                                                                                                                                                                            const roleDef = roleshopItems.find(r => r.name.toLowerCase() === roleName);
+                                                                                                                                                                                                                                                                                                                if (!roleDef) return message.reply({ content: "⚠️ Role definition not found in shop configuration.", allowedMentions: { parse: [] } });
+
+                                                                                                                                                                                                                                                                                                                    const discordRole = message.guild.roles.cache.get(roleDef.id);
+                                                                                                                                                                                                                                                                                                                        if (!discordRole) return message.reply({ content: "⚠️ Role not found on this server. Check role IDs in configuration!", allowedMentions: { parse: [] } });
+
+                                                                                                                                                                                                                                                                                                                            // Strip any other worn shop roles first
+                                                                                                                                                                                                                                                                                                                                const shopRoleIds = roleshopItems.map(r => r.id);
+                                                                                                                                                                                                                                                                                                                                    for (const rId of shopRoleIds) {
+                                                                                                                                                                                                                                                                                                                                          if (message.member.roles.cache.has(rId)) {
+                                                                                                                                                                                                                                                                                                                                                  try { await message.member.roles.remove(rId); } catch (e) {}
+                                                                                                                                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                // Equip selected role
+                                                                                                                                                                                                                                                                                                                                                                    try {
+                                                                                                                                                                                                                                                                                                                                                                          await message.member.roles.add(discordRole);
+                                                                                                                                                                                                                                                                                                                                                                                return message.reply({ content: `✨ Equipped **${roleDef.icon} ${roleDef.name}**! Your chat color has been updated.`, allowedMentions: { parse: [] } });
+                                                                                                                                                                                                                                                                                                                                                                                    } catch (err) {
+                                                                                                                                                                                                                                                                                                                                                                                          return message.reply({ content: "❌ Permission error: Make sure the CrystalBot role is placed above all shop roles in Server Settings > Roles!", allowedMentions: { parse: [] } });
+                                                                                                                                                                                                                                                                                                                                                                                              }
+                                                                                                                                                                                                                                                                                                                                                                                                }
+
+                                                                                                                                                                                                                                                                                                                                                                                                  else if (command === 'cry!unequip') {
+                                                                                                                                                                                                                                                                                                                                                                                                      const roleName = args.slice(1).join(' ').toLowerCase();
+                                                                                                                                                                                                                                                                                                                                                                                                          
+                                                                                                                                                                                                                                                                                                                                                                                                              // Unequip all worn shop roles if no role is explicitly named
+                                                                                                                                                                                                                                                                                                                                                                                                                  const shopRoleIds = roleshopItems.map(r => r.id);
+                                                                                                                                                                                                                                                                                                                                                                                                                      let removedAny = false;
+
+                                                                                                                                                                                                                                                                                                                                                                                                                          for (const rId of shopRoleIds) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                if (message.member.roles.cache.has(rId)) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                        try {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                  await message.member.roles.remove(rId);
+                                                                                                                                                                                                                                                                                                                                                                                                                                                            removedAny = true;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                    } catch (e) {}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                          }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                              }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  if (!removedAny) {
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        return message.reply({ content: "You do not have any shop roles currently equipped.", allowedMentions: { parse: [] } });
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                return message.reply({ content: "✨ Unequipped your shop role! Your inventory remains safe in `cry!myroles`.", allowedMentions: { parse: [] } });
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  }
+
+  
 
   else if (command === 'cry!garden') {
     return message.reply("🌿 Check your `cry!profile` to see your beautiful plant's progress!");

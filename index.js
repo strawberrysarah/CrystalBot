@@ -269,7 +269,7 @@ const userProfileSchema = new mongoose.Schema({
   anonymousCount: { type: Number, default: 0 }
 });
 
-const User = mongoose.model('UserProfile', userProfileSchema);
+const User = mongoose.model('User', userProfileSchema, 'users');
 
 async function getUser(userId) {
   let user = await User.findOne({ userId });

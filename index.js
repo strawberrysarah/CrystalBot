@@ -473,7 +473,7 @@ client.on('messageCreate', async message => {
   // EASTER EGG CHAT TRIGGERS
   // ------------------------------------------
   if (message.content.toLowerCase().includes('sarah')) {
-    return message.channel.send("My mom loves me bish");
+    return message.channel.send("*🥹 My mom loves me bish.*");
   }
 
   if (message.content.toLowerCase().trim() === 'cry!cry') {
@@ -504,7 +504,7 @@ client.on('messageCreate', async message => {
           `**🛍️ Market:** \`shop\`, \`buy\`, \`sell\`, \`inv\`\n` +
           `**👗 Wardrobe:** \`roleshop\`, \`buyrole\`, \`equip\`, \`unequip\`, \`myroles\`\n` +
           `**🌱 Nursery:** \`sow\`, \`water\`, \`fertilise\`, \`harvest\`, \`plants\`\n` +
-          `**♟️ Games & Gambling:** \`chessduel\`, \`imposter\`, \`trivia\`, \`slots\`, \`beg\`, \`rps\`\n` +
+          `**♟️ Games & Gambling:** \`chessduel\`, \`imposter\`, \`imposterlearn\`, \`trivia\`, \`slots\`, \`beg\`, \`rps\`\n` +
           `**💍 Romance:** \`propose\`, \`marry\`, \`divorce\`, \`partner\`, \`love\`, \`ship\`\n` +
           `**✨ Social:** \`slap\`, \`bonk\`, \`poke\`, \`punch\`, \`pinch\`, \`bite\`, \`hug\`, \`kiss\`, \`pat\`, \`highfive\`, \`dance\`, \`laugh\`, \`blush\`, \`twerk\`\n` +
           `**🔮 Identity & Fun:** \`gay\`, \`lesbian\`, \`rate\`, \`cf\`, \`dice\`, \`crystalstorm\`, \`pickup\`, \`roast\`, \`anonymous\`\n` +
@@ -1432,7 +1432,85 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // MANSION IMPOSTER (10-MIN COMBINED CD)
+    // ==========================================
+// MANSION IMPOSTER: COMPREHENSIVE GUIDE
+// ==========================================
+if (command === 'imposterlearn') {
+  let page = 1;
+  const getLearnEmbed = (p) => {
+    const embed = new EmbedBuilder().setColor('#2d0c45');
+    if (p === 1) {
+      embed.setTitle('✧ MANSION IMPOSTER: GAMEPLAY & PHASES (1/3) ✧')
+        .setDescription(
+          "**Objective:** Innocents must uncover and banish the hidden Phantom before the mansion falls completely into darkness.\n\n" +
+          "**1. Expedition Lobby:**\n" +
+          "• Trigger with `cry!imposter`. Needs **at least 3 explorers** to begin.\n\n" +
+          "**2. Night Phase (30 seconds):**\n" +
+          "• Night falls and the mansion goes dark.\n" +
+          "• Players with secret roles receive private DM action buttons (Kill, Protect, or Inspect).\n\n" +
+          "**3. Morning Dawn & Roll Call:**\n" +
+          "• The bot announces night casualties or shields along with an updated list of **Survivors** and **Fallen Guests**.\n\n" +
+          "**4. Council & Banishment:**\n" +
+          "• **60s Debate Phase:** Discuss clues in chat.\n" +
+          "• **30s Secret Voting Phase:** Vote via interactive buttons to banish a suspect! Majority vote eliminates them."
+        );
+    } else if (p === 2) {
+      embed.setTitle('✧ MANSION IMPOSTER: SECRET ROLES (2/3) ✧')
+        .setDescription(
+          "🗡️ **The Phantom (The Imposter):**\n" +
+          "• *Objective:* Eliminate players until parity with survivors is reached.\n" +
+          "• *Night Action:* Receives DM buttons each night to secretly choose a victim to assassinate.\n\n" +
+          "🔮 **The Oracle (The Detective):**\n" +
+          "• *Objective:* Identify the Phantom and guide the innocents.\n" +
+          "• *Night Action:* Inspects one player per night. The bot whispers back whether their aura is pure or dark resonance.\n\n" +
+          "🛡️ **The Guardian (The Bodyguard):**\n" +
+          "• *Objective:* Keep guests alive.\n" +
+          "• *Night Action:* Wards one player each night. If the Phantom attacks them, the murder is blocked!\n" +
+          "• *Restriction:* Cannot shield the same guest on consecutive nights.\n\n" +
+          "🕯️ **The Explorer (The Innocent):**\n" +
+          "• *Objective:* Survive, analyze behavioral clues, debate, and vote out the Phantom."
+        );
+    } else {
+      embed.setTitle('✧ MANSION IMPOSTER: REWARDS & RULES (3/3) ✧')
+        .setDescription(
+          "**🏆 Victory Conditions & Rewards:**\n" +
+          "• **Innocents Win:** Banishing the Phantom awards all surviving innocents, the Oracle, and the Guardian **+200 crystals** each!\n" +
+          "• **Phantom Wins:** Reducing survivors down to 1 (or parity) awards the Phantom the grand pot of **+500 crystals**!\n\n" +
+          "**⚠️ Important Rules:**\n" +
+          "• **Keep DMs Open:** The bot must be able to DM you your secret night action buttons!\n" +
+          "• **Tied Votes:** If votes tie or time expires without a majority, nobody is banished and night falls immediately."
+        );
+    }
+    embed.setFooter({ text: `Page ${p} of 3 • Use buttons below to navigate` });
+    return embed;
+  };
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('imp_prev').setLabel('◀ Previous').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('imp_next').setLabel('Next ▶').setStyle(ButtonStyle.Primary)
+  );
+
+  const lMsg = await message.reply({ embeds: [getLearnEmbed(1)], components: [row] });
+  const collector = lMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+
+  collector.on('collect', async i => {
+    if (i.user.id !== message.author.id) return i.reply({ content: "Open your own guide with cry!imposterlearn", ephemeral: true });
+    if (i.customId === 'imp_prev') page = page > 1 ? page - 1 : 3;
+    else page = page < 3 ? page + 1 : 1;
+    await i.update({ embeds: [getLearnEmbed(page)], components: [row] });
+  });
+
+  collector.on('end', () => {
+    row.components.forEach(b => b.setDisabled(true));
+    lMsg.edit({ components: [row] }).catch(() => {});
+  });
+  return;
+}
+
+
+        // ==========================================
+    // MULTI-ROUND MANSION IMPOSTER (EXPANDED)
+    // ==========================================
     if (command === 'imposter') {
       const cd = checkCooldown('imposter_global', 600000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Mansion corridors are sealed under investigation! Server Cooldown: **${formatDuration(cd)}**.`);
@@ -1440,10 +1518,10 @@ client.on('messageCreate', async message => {
       if (activeGames.has(message.channel.id)) return message.reply("⚠️ An expedition is already underway in this channel!");
 
       const lobbyEmbed = new EmbedBuilder()
-        .setTitle('🏰 MANSION IMPOSTER — EXPEDITION LOBBY')
+        .setTitle('🏰 MANSION IMPOSTER — EXPEDITION REGISTRATION')
         .setColor('#2d0c45')
-        .setDescription("A sinister murderer stalks the crystal corridors.\nNeed **at least 3 players** to begin.\n\nClick **Join Expedition** below!")
-        .setFooter({ text: "Expedition embarks in 25 seconds." });
+        .setDescription("A malevolent presence stalks the crystal corridors.\nRequires **at least 3 players** to begin.\n\nClick **Join Expedition** below!")
+        .setFooter({ text: "Registration closes in 25 seconds." });
 
       const joinBtn = new ButtonBuilder().setCustomId('join_imposter').setLabel('Join Expedition').setStyle(ButtonStyle.Primary).setEmoji('🚪');
       const row = new ActionRowBuilder().addComponents(joinBtn);
@@ -1451,15 +1529,15 @@ client.on('messageCreate', async message => {
       const lobbyMsg = await message.channel.send({ embeds: [lobbyEmbed], components: [row] });
       const players = new Set([message.author.id]);
 
-      const collector = lobbyMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 25000 });
+      const lobbyCollector = lobbyMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 25000 });
 
-      collector.on('collect', async i => {
-        if (players.has(i.user.id)) return i.reply({ content: "You're already in the expedition!", ephemeral: true });
+      lobbyCollector.on('collect', async i => {
+        if (players.has(i.user.id)) return i.reply({ content: "You are already registered!", ephemeral: true });
         players.add(i.user.id);
-        await i.reply({ content: `✅ Joined! (${players.size} players in lobby)`, ephemeral: true });
+        await i.reply({ content: `✅ Registered! (${players.size} players in lobby)`, ephemeral: true });
       });
 
-      collector.on('end', async () => {
+      lobbyCollector.on('end', async () => {
         row.components[0].setDisabled(true);
         await lobbyMsg.edit({ components: [row] });
 
@@ -1469,107 +1547,255 @@ client.on('messageCreate', async message => {
 
         activeGames.set(message.channel.id, true);
         const playerArray = Array.from(players);
-        const murdererId = playerArray[Math.floor(Math.random() * playerArray.length)];
+        
+        // Setup state
+        const roles = new Map();
+        let living = [...playerArray];
+        let dead = [];
+        let lastProtected = null;
+        let dayCount = 1;
 
-        // Phase 1: DM Roles & Clues
+        // Shuffle & assign roles
+        const shuffled = [...playerArray].sort(() => Math.random() - 0.5);
+        const phantomId = shuffled[0];
+        roles.set(phantomId, 'Phantom');
+
+        let oracleId = null;
+        let guardianId = null;
+
+        if (shuffled.length === 3 || shuffled.length === 4) {
+          // 1 special role randomly
+          if (Math.random() < 0.5) {
+            oracleId = shuffled[1];
+            roles.set(oracleId, 'Oracle');
+          } else {
+            guardianId = shuffled[1];
+            roles.set(guardianId, 'Guardian');
+          }
+        } else if (shuffled.length >= 5) {
+          oracleId = shuffled[1];
+          guardianId = shuffled[2];
+          roles.set(oracleId, 'Oracle');
+          roles.set(guardianId, 'Guardian');
+        }
+
+        // Remaining are Explorers
+        for (const pid of playerArray) {
+          if (!roles.has(pid)) roles.set(pid, 'Explorer');
+        }
+
+        // Send Initial Role Dispatches
         for (const pid of playerArray) {
           try {
             const member = await message.guild.members.fetch(pid);
-            if (pid === murdererId) {
-              await member.send("🗡️ **YOU ARE THE MANSION MURDERER.** Eliminate the innocents without getting identified.");
+            const role = roles.get(pid);
+            if (role === 'Phantom') {
+              await member.send("🗡️ **YOU ARE THE PHANTOM.** Eliminate the explorers one by one without getting caught.");
+            } else if (role === 'Oracle') {
+              await member.send("🔮 **YOU ARE THE ORACLE.** Each night, inspect one guest to uncover their aura.");
+            } else if (role === 'Guardian') {
+              await member.send("🛡️ **YOU ARE THE GUARDIAN.** Each night, shield one guest from being attacked.");
             } else {
-              const innocentClues = [
-                "You heard faint footsteps trailing near the geode gallery...",
-                "A cold draft blew past the grand library just moments ago...",
-                "You noticed a glistening dark geode left on the dining table..."
-              ];
-              const clue = innocentClues[Math.floor(Math.random() * innocentClues.length)];
-              await member.send(`🕯️ **YOU ARE AN INNOCENT EXPLORER.**\n*Clue:* ${clue}`);
+              await member.send("🕯️ **YOU ARE AN EXPLORER.** Survive the nights, analyze clues, and vote out the Phantom during the council.");
             }
           } catch {}
         }
 
-        message.channel.send("🌑 **The heavy mansion gates lock shut. Night falls over the corridors...** (10 seconds)");
+        message.channel.send(`🕯️ **The heavy gates lock shut! Roles have been dispatched to your private DMs.** (${playerArray.length} explorers entered)`);
 
-        // Phase 2: Night Murder
-        setTimeout(async () => {
-          const innocents = playerArray.filter(id => id !== murdererId);
-          const victimId = innocents[Math.floor(Math.random() * innocents.length)];
+        // Function: Render Roll Call Board
+        const renderRollCall = (day) => {
+          const aliveLines = living.map(id => `• <@${id}>`).join('\n') || '*None*';
+          const deadLines = dead.map(d => `• ~~<@${d.id}>~~ *(${d.reason})*`).join('\n') || '*None yet*';
 
-          message.channel.send(`🚨 **A CHILLING SCREAM RESONATES!**\n<@${victimId}> was found lifeless beside a shattered geode mirror!\n\n**Emergency Council Initiated.** You have **2 minutes** to discuss before voting begins.`);
+          return new EmbedBuilder()
+            .setTitle(`✧ MANSION STATUS • DAY ${day} ✧`)
+            .setColor('#1a0826')
+            .addFields(
+              { name: `🕯️ Survivors Standing (${living.length})`, value: aliveLines, inline: true },
+              { name: `💀 Fallen Guests (${dead.length})`, value: deadLines, inline: true }
+            );
+        };
 
-          // Phase 3: 2-Minute Discussion Delay
+        // Core Day/Night Loop
+        async function runRound() {
+          // Check Win Conditions
+          if (!living.includes(phantomId)) {
+            message.channel.send("🎉 **JUSTICE RESTORED!** The Phantom has been banished from the mansion!\n**INNOCENTS WIN!**");
+            for (const sid of living) {
+              const survivor = await getUser(sid);
+              survivor.balance += 200;
+              await survivor.save();
+            }
+            message.channel.send(`💎 All surviving innocents received **+200 ${cryCoin}**!`);
+            activeGames.delete(message.channel.id);
+            return;
+          }
+
+          if (living.length <= 2) {
+            message.channel.send("💀 **THE MANSION HAS FALLEN!** The Phantom overwhelmed the survivors in the darkness!\n**PHANTOM WINS!**");
+            const killer = await getUser(phantomId);
+            killer.balance += 500;
+            await killer.save();
+            message.channel.send(`👑 <@${phantomId}> was the Phantom and escaped with **+500 ${cryCoin}**!`);
+            activeGames.delete(message.channel.id);
+            return;
+          }
+
+          // NIGHT PHASE
+          message.channel.send(`🌑 **NIGHT ${dayCount}: Pitch darkness engulfs the corridors...** Special roles, check your DMs! (30 seconds)`);
+
+          let targetKillId = null;
+          let targetProtectId = null;
+
+          // Phantom DM Action
+          try {
+            const pMember = await message.guild.members.fetch(phantomId);
+            const killButtons = living.filter(id => id !== phantomId).map(id => {
+              const mem = message.guild.members.cache.get(id);
+              return new ButtonBuilder().setCustomId(`kill_${id}`).setLabel(mem ? mem.displayName.slice(0, 20) : 'Explorer').setStyle(ButtonStyle.Danger);
+            });
+            const kRow = new ActionRowBuilder().addComponents(killButtons.slice(0, 5));
+            const kMsg = await pMember.send({ content: "🗡️ **Choose your strike target for tonight:**", components: [kRow] });
+            const kCollector = kMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 25000 });
+            kCollector.on('collect', async ki => {
+              targetKillId = ki.customId.replace('kill_', '');
+              await ki.reply({ content: `Target locked: <@${targetKillId}>`, ephemeral: true });
+              kCollector.stop();
+            });
+          } catch {}
+
+          // Guardian DM Action
+          if (guardianId && living.includes(guardianId)) {
+            try {
+              const gMember = await message.guild.members.fetch(guardianId);
+              const protectButtons = living.filter(id => id !== lastProtected).map(id => {
+                const mem = message.guild.members.cache.get(id);
+                return new ButtonBuilder().setCustomId(`ward_${id}`).setLabel(mem ? mem.displayName.slice(0, 20) : 'Guest').setStyle(ButtonStyle.Primary);
+              });
+              const gRow = new ActionRowBuilder().addComponents(protectButtons.slice(0, 5));
+              const gMsg = await gMember.send({ content: "🛡️ **Choose someone to shield tonight:**", components: [gRow] });
+              const gCollector = gMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 25000 });
+              gCollector.on('collect', async gi => {
+                targetProtectId = gi.customId.replace('ward_', '');
+                lastProtected = targetProtectId;
+                await gi.reply({ content: `Barrier raised over <@${targetProtectId}>`, ephemeral: true });
+                gCollector.stop();
+              });
+            } catch {}
+          }
+
+          // Oracle DM Action
+          if (oracleId && living.includes(oracleId)) {
+            try {
+              const oMember = await message.guild.members.fetch(oracleId);
+              const inspectButtons = living.filter(id => id !== oracleId).map(id => {
+                const mem = message.guild.members.cache.get(id);
+                return new ButtonBuilder().setCustomId(`inspect_${id}`).setLabel(mem ? mem.displayName.slice(0, 20) : 'Guest').setStyle(ButtonStyle.Secondary);
+              });
+              const oRow = new ActionRowBuilder().addComponents(inspectButtons.slice(0, 5));
+              const oMsg = await oMember.send({ content: "🔮 **Choose a guest's aura to inspect:**", components: [oRow] });
+              const oCollector = oMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 25000 });
+              oCollector.on('collect', async oi => {
+                const inspectTarget = oi.customId.replace('inspect_', '');
+                const isTargetPhantom = inspectTarget === phantomId;
+                await oi.reply({
+                  content: isTargetPhantom ? "🔮 **Dark, malevolent resonance detected! They are the Phantom!**" : "✨ **Pure starlight aura. They are an innocent explorer.**",
+                  ephemeral: true
+                });
+                oCollector.stop();
+              });
+            } catch {}
+          }
+
+          // Wait 30 seconds for night resolution
           setTimeout(async () => {
-            const alivePlayers = playerArray.filter(id => id !== victimId);
-            const voteButtons = alivePlayers.map(pid => {
-              const member = message.guild.members.cache.get(pid);
-              return new ButtonBuilder()
-                .setCustomId(`vote_${pid}`)
-                .setLabel(member ? member.displayName.slice(0, 20) : 'Explorer')
-                .setStyle(ButtonStyle.Danger);
-            });
+            let morningMessage = "";
 
-            const voteRow = new ActionRowBuilder().addComponents(voteButtons.slice(0, 5));
-            const voteMsg = await message.channel.send({
-              content: "⚖️ **Discussion closed! Cast your vote for who you believe the murderer is:**",
-              components: [voteRow]
-            });
+            if (targetKillId && targetKillId === targetProtectId) {
+              morningMessage = "🛡️ **A clash in the shadows!** The Phantom attempted a strike, but the Guardian's starlight ward blocked the blade! **Nobody died tonight!**";
+            } else if (targetKillId) {
+              living = living.filter(id => id !== targetKillId);
+              dead.push({ id: targetKillId, reason: `Eliminated Night ${dayCount}` });
+              morningMessage = `🚨 **A CHILLING SCREAM RESONATES!** <@${targetKillId}> was discovered lifeless in the courtyard!`;
+            } else {
+              morningMessage = "🕊️ **An eerie quiet.** The shadows crept through the halls, but no one was harmed.";
+            }
 
-            const votes = new Map();
-            const voteCollector = voteMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
+            message.channel.send(`🌅 **MORNING BREAKS (DAY ${dayCount})**\n${morningMessage}`);
+            message.channel.send({ embeds: [renderRollCall(dayCount)] });
 
-            voteCollector.on('collect', async vi => {
-              if (!alivePlayers.includes(vi.user.id)) return vi.reply({ content: "Dead explorers cannot vote.", ephemeral: true });
-              const votedFor = vi.customId.replace('vote_', '');
-              votes.set(vi.user.id, votedFor);
-              await vi.reply({ content: "Vote cast secretly.", ephemeral: true });
-            });
+            // Check if Phantom won overnight
+            if (living.length <= 2 || !living.includes(phantomId)) {
+              return runRound();
+            }
 
-            voteCollector.on('end', async () => {
-              voteRow.components.forEach(b => b.setDisabled(true));
-              await voteMsg.edit({ components: [voteRow] });
+            // COUNCIL DISCUSSION & VOTING
+            message.channel.send("🗣️ **Emergency Council initiated!** You have **60 seconds** to debate clues before voting opens!");
 
-              const voteTally = {};
-              for (const [, targetId] of votes) voteTally[targetId] = (voteTally[targetId] || 0) + 1;
+            setTimeout(async () => {
+              const voteButtons = living.map(pid => {
+                const mem = message.guild.members.cache.get(pid);
+                return new ButtonBuilder()
+                  .setCustomId(`vote_${pid}`)
+                  .setLabel(mem ? mem.displayName.slice(0, 20) : 'Explorer')
+                  .setStyle(ButtonStyle.Danger);
+              });
 
-              let executedId = null;
-              let maxVotes = 0;
-              for (const [tId, count] of Object.entries(voteTally)) {
-                if (count > maxVotes) {
-                  maxVotes = count;
-                  executedId = tId;
+              const vRow = new ActionRowBuilder().addComponents(voteButtons.slice(0, 5));
+              const voteMsg = await message.channel.send({
+                content: "⚖️ **Discussion closed! Cast your vote for banishment:**",
+                components: [vRow]
+              });
+
+              const votes = new Map();
+              const vCollector = voteMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 25000 });
+
+              vCollector.on('collect', async vi => {
+                if (!living.includes(vi.user.id)) return vi.reply({ content: "Dead guests cannot vote.", ephemeral: true });
+                const votedFor = vi.customId.replace('vote_', '');
+                votes.set(vi.user.id, votedFor);
+                await vi.reply({ content: "Vote cast secretly.", ephemeral: true });
+              });
+
+              vCollector.on('end', async () => {
+                vRow.components.forEach(b => b.setDisabled(true));
+                await voteMsg.edit({ components: [vRow] });
+
+                const voteTally = {};
+                for (const [, targetId] of votes) voteTally[targetId] = (voteTally[targetId] || 0) + 1;
+
+                let exiledId = null;
+                let highest = 0;
+                for (const [tId, cnt] of Object.entries(voteTally)) {
+                  if (cnt > highest) {
+                    highest = cnt;
+                    exiledId = tId;
+                  }
                 }
-              }
 
-              if (!executedId) {
-                message.channel.send("⚖️ The council could not reach consensus! The murderer strikes again!\n**MURDERER WINS!**");
-                const killer = await getUser(murdererId);
-                killer.balance += 300;
-                await killer.save();
-                message.channel.send(`👑 <@${murdererId}> was the murderer and collected **+300 ${cryCoin}**!`);
-              } else if (executedId === murdererId) {
-                message.channel.send(`🎉 **JUSTICE RESTORED!** <@${executedId}> was thrown out the crystal window and was indeed the **MURDERER**!\n**INNOCENTS WIN!**`);
-                for (const survivorId of alivePlayers.filter(id => id !== murdererId)) {
-                  const survivor = await getUser(survivorId);
-                  survivor.balance += 200;
-                  await survivor.save();
+                if (!exiledId || highest <= 1) {
+                  message.channel.send("⚖️ The council was divided. Nobody received a decisive majority. No one was banished!");
+                } else {
+                  living = living.filter(id => id !== exiledId);
+                  const exiledRole = roles.get(exiledId);
+                  dead.push({ id: exiledId, reason: `Banished Day ${dayCount} (${exiledRole})` });
+                  message.channel.send(`🪟 <@${exiledId}> was exiled through the stained-glass gates! Their true role was: **${exiledRole.toUpperCase()}**!`);
                 }
-                message.channel.send(`💎 All surviving innocents received **+200 ${cryCoin}**!`);
-              } else {
-                message.channel.send(`💀 A fatal mistake! <@${executedId}> was **INNOCENT**!\n**THE MURDERER ESCAPES!**`);
-                const killer = await getUser(murdererId);
-                killer.balance += 300;
-                await killer.save();
-                message.channel.send(`👑 <@${murdererId}> was the murderer and escaped with **+300 ${cryCoin}**!`);
-              }
 
-              activeGames.delete(message.channel.id);
-            });
-          }, 120000); // 2 minutes discussion
-        }, 10000);
+                dayCount++;
+                setTimeout(() => runRound(), 5000);
+              });
+            }, 60000); // 60s discussion
+          }, 30000); // 30s night
+        }
+
+        // Start Round 1
+        runRound();
       });
       return;
     }
+
 
     // BEG
     if (command === 'beg') {

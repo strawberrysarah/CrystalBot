@@ -304,7 +304,7 @@ async function addExperience(user, amount, message) {
 }
 
 // ==========================================
-// CELESTIAL INFINITY SHIP CARD RENDERER
+// CELESTIAL INFINITY SHIP CARD RENDERER (FIXED)
 // ==========================================
 async function renderShipCard(u1, u2, resonance) {
   const w = 1200;
@@ -312,40 +312,55 @@ async function renderShipCard(u1, u2, resonance) {
   const canvas = createCanvas(w, h);
   const ctx = canvas.getContext('2d');
 
-  // Dynamic Theme Colors by Resonance
+  // Dynamic Theme Colors, Glows, and Taglines by Resonance
   let glowColor = '#7209b7';
   let primaryHue = '#f72585';
   let secondaryHue = '#4cc9f0';
   let tagline = "DIFFERENT STARS, SAME SKY";
 
-  if (resonance >= 90) {
+  if (resonance === 100) {
+    glowColor = '#ff0055';
+    primaryHue = '#ff007f';
+    secondaryHue = '#ffd166';
+    tagline = "ETERNAL TWIN FLAMES • ABSOLUTE SOULMATE PERFECTION";
+  } else if (resonance >= 90) {
     glowColor = '#ff4d6d';
     primaryHue = '#ff007f';
     secondaryHue = '#b5179e';
-    tagline = "CONSTELLATIONS WRITTEN IN ETERNITY";
+    tagline = "WRITTEN IN THE CONSTELLATIONS • COSMIC HARMONY";
   } else if (resonance >= 75) {
     glowColor = '#d946ef';
     primaryHue = '#ec4899';
     secondaryHue = '#8b5cf6';
-    tagline = "TWO ORBITS PULLED INTO HARMONY";
+    tagline = "A POWERFUL CELESTIAL PULL • RADIANT GRAVITY";
   } else if (resonance >= 50) {
     glowColor = '#8a2be2';
     primaryHue = '#c084fc';
     secondaryHue = '#38bdf8';
     tagline = "DRIFTING THROUGH PARALLEL GALAXIES";
-  } else if (resonance >= 25) {
+  } else if (resonance >= 30) {
     glowColor = '#4361ee';
     primaryHue = '#7209b7';
     secondaryHue = '#4cc9f0';
-    tagline = "FAINT RESONANCE ACROSS THE COSMOS";
-  } else {
+    tagline = "ORBITING CAUTIOUSLY • REQUIRES PATIENCE";
+  } else if (resonance >= 10) {
     glowColor = '#3a0ca3';
+    primaryHue = '#5c4d7d';
+    secondaryHue = '#3a0ca3';
+    tagline = "FAINT STATIC • UNSTABLE CELESTIAL FREQUENCY";
+  } else if (resonance > 0) {
+    glowColor = '#2b0938';
     primaryHue = '#4a4e69';
     secondaryHue = '#22223b';
-    tagline = "DISTANT WORLDS, COLLIDING SHADOWS";
+    tagline = "SUPERNOVA COLLISION • DEFCON 1 DANGER";
+  } else {
+    glowColor = '#1a0022';
+    primaryHue = '#343a40';
+    secondaryHue = '#212529';
+    tagline = "BLACK HOLE DISASTER • RUN IN OPPOSITE DIRECTIONS";
   }
 
-  // 1. Deep Midnight Cosmic Backdrop
+  // 1. Cosmic Gradient Background
   const bgGrad = ctx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, 700);
   bgGrad.addColorStop(0, '#1c032e');
   bgGrad.addColorStop(0.5, '#0d0118');
@@ -353,26 +368,27 @@ async function renderShipCard(u1, u2, resonance) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
-  // Soft corner nebula glows
+  // Soft Nebula Glow Blobs
   function drawGlowBlob(x, y, r, color) {
+    ctx.save();
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, color);
     g.addColorStop(1, 'transparent');
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.restore();
   }
-  drawGlowBlob(200, 300, 280, `${primaryHue}22`);
-  drawGlowBlob(1000, 300, 280, `${secondaryHue}22`);
-  drawGlowBlob(600, 300, 350, `${glowColor}33`);
+  drawGlowBlob(210, 300, 260, `${primaryHue}33`);
+  drawGlowBlob(990, 300, 260, `${secondaryHue}33`);
+  drawGlowBlob(600, 300, 350, `${glowColor}44`);
 
-  // 2. Starfield & 4-Point Starlight Sparkles
-  function drawSparkle(x, y, size, alpha = 0.8) {
+  // 2. Stars & Sparkles
+  function drawSparkle(x, y, size, alpha = 0.9) {
     ctx.save();
     ctx.translate(x, y);
     ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
     ctx.shadowColor = primaryHue;
     ctx.shadowBlur = 10;
-
     ctx.beginPath();
     ctx.moveTo(0, -size);
     ctx.quadraticCurveTo(0, 0, size, 0);
@@ -383,155 +399,130 @@ async function renderShipCard(u1, u2, resonance) {
     ctx.restore();
   }
 
-  // Ambient Star Dust
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < 80; i++) {
     const sx = Math.random() * w;
     const sy = Math.random() * h;
-    const sr = Math.random() * 1.8 + 0.4;
+    const sr = Math.random() * 1.6 + 0.4;
     ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.7 + 0.2})`;
     ctx.beginPath();
     ctx.arc(sx, sy, sr, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Prominent glowing stars
-  const majorStars = [
-    [100, 100, 14], [1100, 100, 14], [100, 500, 12], [1100, 500, 12],
-    [340, 140, 10], [860, 140, 10], [540, 230, 8], [660, 230, 8],
-    [600, 480, 9], [250, 450, 7], [950, 450, 7]
+  const sparkles = [
+    [100, 100, 12], [1100, 100, 12], [100, 500, 10], [1100, 500, 10],
+    [340, 140, 9], [860, 140, 9], [530, 240, 7], [670, 240, 7],
+    [600, 480, 8]
   ];
-  majorStars.forEach(([x, y, s]) => drawSparkle(x, y, s, 0.9));
+  sparkles.forEach(([x, y, s]) => drawSparkle(x, y, s));
 
-  // Crescent Moons (Top Right & Bottom Left)
+  // Crescent Moons
   function drawMoon(x, y, r, rot) {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rot);
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 12;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0.5 * Math.PI, 1.5 * Math.PI, true);
     ctx.bezierCurveTo(r * 0.4, -r, r * 0.4, r, 0, r);
     ctx.fill();
     ctx.restore();
   }
-  drawMoon(1110, 80, 22, -0.4);
-  drawMoon(75, 460, 22, 0.4);
+  drawMoon(1110, 80, 20, -0.4);
+  drawMoon(75, 480, 20, 0.4);
 
   // 3. Central Infinity Ribbon
   ctx.save();
-  ctx.lineWidth = 18;
+  ctx.lineWidth = 14;
   ctx.strokeStyle = primaryHue;
   ctx.shadowColor = glowColor;
-  ctx.shadowBlur = 30;
+  ctx.shadowBlur = 25;
 
-  // Outer glowing infinity path
   ctx.beginPath();
   for (let t = 0; t <= Math.PI * 2; t += 0.02) {
     const scale = 230;
     const ix = 600 + (scale * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t));
-    const iy = 280 + (scale * Math.sin(t) * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t));
+    const iy = 300 + (scale * Math.sin(t) * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t));
     if (t === 0) ctx.moveTo(ix, iy);
     else ctx.lineTo(ix, iy);
   }
   ctx.stroke();
 
-  // Core starlight inner stroke
-  ctx.lineWidth = 6;
+  ctx.lineWidth = 4;
   ctx.strokeStyle = '#ffffff';
-  ctx.shadowBlur = 15;
+  ctx.shadowBlur = 10;
   ctx.stroke();
   ctx.restore();
 
-  // 4. Central Glowing Heart Bezel
-  function drawHeart(cx, cy, size) {
-    ctx.save();
-    ctx.translate(cx, cy);
+  // 4. Central Heart Frame
+  function drawHeartPath(cx, cy, s) {
     ctx.beginPath();
-    const topCurveHeight = size * 0.3;
-    ctx.moveTo(0, size * 0.3);
-    ctx.bezierCurveTo(0, -size * 0.2, -size * 0.7, -size * 0.2, -size * 0.7, size * 0.2);
-    ctx.bezierCurveTo(-size * 0.7, size * 0.6, 0, size * 0.9, 0, size * 1.1);
-    ctx.bezierCurveTo(0, size * 0.9, size * 0.7, size * 0.6, size * 0.7, size * 0.2);
-    ctx.bezierCurveTo(size * 0.7, -size * 0.2, 0, -size * 0.2, 0, size * 0.3);
+    ctx.moveTo(cx, cy - s * 0.2);
+    ctx.bezierCurveTo(cx - s * 0.6, cy - s * 0.8, cx - s * 1.1, cy + s * 0.1, cx, cy + s * 0.9);
+    ctx.bezierCurveTo(cx + s * 1.1, cy + s * 0.1, cx + s * 0.6, cy - s * 0.8, cx, cy - s * 0.2);
     ctx.closePath();
   }
 
-  // Heart Backfill
-  drawHeart(600, 225, 78);
-  ctx.fillStyle = '#160226';
+  // Heart Background & Glow
+  ctx.save();
+  drawHeartPath(600, 290, 75);
+  ctx.fillStyle = '#170126';
   ctx.shadowColor = primaryHue;
-  ctx.shadowBlur = 35;
+  ctx.shadowBlur = 30;
   ctx.fill();
 
-  // Heart Outer Ring
-  drawHeart(600, 225, 78);
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 6;
   ctx.strokeStyle = primaryHue;
   ctx.stroke();
 
-  // Heart Inner Border
-  drawHeart(600, 225, 74);
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2.5;
   ctx.strokeStyle = '#ffffff';
-  ctx.shadowColor = '#ffffff';
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 8;
   ctx.stroke();
   ctx.restore();
 
-  // Percentage in Heart Center
+  // Percentage Text Inside Heart
   ctx.save();
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 44px sans-serif';
+  ctx.font = 'bold 40px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.shadowColor = primaryHue;
-  ctx.shadowBlur = 18;
-  ctx.fillText(`${resonance}%`, 600, 275);
+  ctx.shadowBlur = 15;
+  ctx.fillText(`${resonance}%`, 600, 305);
   ctx.restore();
 
-  // Mini floating hearts around the ribbon
-  const miniHearts = [
-    [430, 210, 14], [770, 210, 14], [390, 360, 10], [810, 360, 10], [600, 480, 12]
-  ];
-  miniHearts.forEach(([hx, hy, hs]) => {
-    drawHeart(hx, hy, hs);
-    ctx.fillStyle = primaryHue;
-    ctx.shadowColor = '#ffffff';
-    ctx.shadowBlur = 10;
-    ctx.fill();
-    ctx.restore();
-  });
-
-  // 5. Dual Avatar Porters with Star Accents
-  async function drawFramedAvatar(avatarUrl, cx, cy, r) {
+  // 5. Avatar Disks
+  async function drawAvatarPort(user, cx, cy, r) {
     ctx.save();
 
-    // Outer Neon Glow Ring
+    // Outer Neon Ring
     ctx.beginPath();
-    ctx.arc(cx, cy, r + 8, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r + 7, 0, Math.PI * 2);
     ctx.strokeStyle = primaryHue;
-    ctx.lineWidth = 6;
+    ctx.lineWidth = 5;
     ctx.shadowColor = primaryHue;
-    ctx.shadowBlur = 25;
+    ctx.shadowBlur = 20;
     ctx.stroke();
 
-    // Secondary Accent Ring (Cyan Starlight)
+    // Inner Starlight Ring
     ctx.beginPath();
-    ctx.arc(cx, cy, r + 4, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r + 3, 0, Math.PI * 2);
     ctx.strokeStyle = secondaryHue;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Clip Avatar Image
+    // Avatar Clip
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
 
     try {
-      const img = await loadImage(avatarUrl);
+      const url = user.displayAvatarURL({ extension: 'png', forceStatic: true, size: 512 });
+      const img = await loadImage(url);
       ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
     } catch {
       ctx.fillStyle = '#2d0c45';
@@ -539,84 +530,85 @@ async function renderShipCard(u1, u2, resonance) {
     }
     ctx.restore();
 
-    // 4-Point Cardinal Cross Stars on Avatar Frame
-    drawSparkle(cx, cy - r - 6, 12);
-    drawSparkle(cx, cy + r + 6, 12);
-    drawSparkle(cx - r - 6, cy, 12);
-    drawSparkle(cx + r + 6, cy, 12);
+    // Star accents on avatar perimeter
+    drawSparkle(cx, cy - r - 5, 10);
+    drawSparkle(cx, cy + r + 5, 10);
+    drawSparkle(cx - r - 5, cy, 10);
+    drawSparkle(cx + r + 5, cy, 10);
   }
 
-  await drawFramedAvatar(u1.displayAvatarURL({ extension: 'png', size: 512 }), 210, 280, 130);
-  await drawFramedAvatar(u2.displayAvatarURL({ extension: 'png', size: 512 }), 990, 280, 130);
+  await drawAvatarPort(u1, 210, 300, 125);
+  await drawAvatarPort(u2, 990, 300, 125);
 
-  // 6. Header Section (Celestial Resonance & Dynamic Tagline)
+  // 6. Header (Title & Tagline)
   ctx.save();
   ctx.fillStyle = '#ffffff';
-  ctx.font = '36px serif';
+  ctx.font = '34px serif';
   ctx.textAlign = 'center';
   ctx.shadowColor = '#ffffff';
-  ctx.shadowBlur = 10;
-  ctx.fillText('Celestial Resonance', 600, 70);
+  ctx.shadowBlur = 8;
+  ctx.fillText('Celestial Resonance', 600, 75);
 
-  // Small Moon beside Title
-  drawMoon(770, 58, 11, -0.2);
+  drawMoon(770, 62, 10, -0.2);
 
-  // Divider Lines & Center Diamond
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  // Divider lines
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(320, 105);
-  ctx.lineTo(880, 105);
+  ctx.moveTo(340, 105);
+  ctx.lineTo(860, 105);
   ctx.stroke();
 
-  drawSparkle(320, 105, 5);
-  drawSparkle(880, 105, 5);
+  drawSparkle(340, 105, 5);
+  drawSparkle(860, 105, 5);
 
-  // Dynamic Tagline Underneath
-  ctx.font = 'bold 15px sans-serif';
-  ctx.fillStyle = '#e2d4f0';
-  ctx.letterSpacing = '4px';
+  // Dynamic Tagline
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillStyle = '#e8d5f5';
   ctx.shadowBlur = 0;
-  ctx.fillText(tagline, 600, 108);
+  ctx.fillText(tagline, 600, 125);
   ctx.restore();
 
   // 7. Footer Names & Combined Ship Tag
   ctx.save();
   ctx.textAlign = 'center';
 
-  // Elegant Script Names ("Selene + Kael")
-  ctx.font = 'italic 52px serif';
+  // Script Names
+  ctx.font = 'italic 46px serif';
   ctx.fillStyle = '#ffffff';
   ctx.shadowColor = primaryHue;
-  ctx.shadowBlur = 15;
-  ctx.fillText(`${u1.username}  +  ${u2.username}`, 600, 440);
+  ctx.shadowBlur = 12;
+  const name1 = u1.username.length > 10 ? u1.username.slice(0, 9) + '…' : u1.username;
+  const name2 = u2.username.length > 10 ? u2.username.slice(0, 9) + '…' : u2.username;
+  ctx.fillText(`${name1}  +  ${name2}`, 600, 460);
 
-  // Lower Divider with Heart
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  // Lower Divider with Mini Heart
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(420, 480);
-  ctx.lineTo(780, 480);
+  ctx.moveTo(420, 495);
+  ctx.lineTo(780, 495);
   ctx.stroke();
 
-  drawHeart(600, 473, 8);
+  ctx.save();
+  drawHeartPath(600, 490, 8);
   ctx.fillStyle = primaryHue;
   ctx.fill();
+  ctx.restore();
 
-  // Portmanteau Ship Name (e.g., "SELKAEL")
-  const p1 = u1.username.slice(0, Math.ceil(u1.username.length / 2));
-  const p2 = u2.username.slice(Math.floor(u2.username.length / 2));
-  const comboName = `${p1}${p2}`.toUpperCase();
+  // Portmanteau Combo Tag
+  const part1 = u1.username.slice(0, Math.max(2, Math.ceil(u1.username.length / 2)));
+  const part2 = u2.username.slice(Math.floor(u2.username.length / 2));
+  const combo = `${part1}${part2}`.toUpperCase().replace(/[^A-Z0-9]/gi, '');
 
-  ctx.font = 'bold 18px sans-serif';
+  ctx.font = 'bold 17px sans-serif';
   ctx.fillStyle = '#d8b4e2';
-  ctx.shadowBlur = 8;
-  ctx.fillText(`✦   ${comboName}   ✦`, 600, 520);
+  ctx.shadowBlur = 6;
+  ctx.fillText(`✦   ${combo || 'ASTRAL'}   ✦`, 600, 535);
   ctx.restore();
 
   return canvas.toBuffer('image/png');
 }
-
 
 // Universal Identity Meter (Gay, Lesbian, Rate)
 async function renderGauge(user, pct, label, colors) {
@@ -2344,7 +2336,7 @@ if (command === 'imposterlearn') {
       return message.reply({ embeds: [pEmbed] });
     }
 
-        // ==========================================
+    // ==========================================
     // CELESTIAL SHIP COMMAND
     // ==========================================
     if (command === 'ship') {
@@ -2354,12 +2346,23 @@ if (command === 'imposterlearn') {
       }
 
       const target = message.mentions.users.first();
-      if (!target || target.id === message.author.id) {
-        return message.reply("Tag someone to calculate resonance with: `cry!ship @user`");
+      if (!target) {
+        return message.reply("⚠️ Tag someone to calculate resonance with: `cry!ship @user`");
       }
 
       // Generate dynamic resonance
       const resonance = Math.floor(Math.random() * 101);
+
+      // Match Embed Reading to Card Tier
+      let reading = "";
+      if (resonance === 100) reading = "🌌 **ETERNAL TWIN FLAMES!** The universe stopped in its tracks. A legendary 100% soul resonance!";
+      else if (resonance >= 90) reading = "✨ *Written in the constellations. Absolute cosmic harmony!*";
+      else if (resonance >= 75) reading = "💖 *A powerful celestial pull. The stars shine brightly on this bond!*";
+      else if (resonance >= 50) reading = "💫 *Two souls drifting in sync through parallel galaxies.*";
+      else if (resonance >= 30) reading = "🪐 *Orbiting cautiously. Requires starlight, care, and patience.*";
+      else if (resonance >= 10) reading = "⚡ *Faint static resonance. Some planetary interference detected.*";
+      else if (resonance > 0) reading = "💥 *Supernova alert! Major orbital collapse warning!*";
+      else reading = "🕳️ **BLACK HOLE WARNING (0%)!** An astral catastrophe. Do not make eye contact.";
 
       // Render the custom 1200x600 Infinity Card
       const cardBuffer = await renderShipCard(message.author, target, resonance);
@@ -2367,12 +2370,14 @@ if (command === 'imposterlearn') {
 
       const shipEmbed = new EmbedBuilder()
         .setTitle('✧ CELESTIAL RESONANCE ✧')
-        .setColor(resonance >= 75 ? '#f72585' : resonance >= 50 ? '#7209b7' : '#3a0ca3')
+        .setColor(resonance >= 75 ? '#f72585' : resonance >= 30 ? '#7209b7' : '#2b0938')
+        .setDescription(`**${message.author.username}** × **${target.username}**\n\n**Resonance Score:** **${resonance}%**\n${reading}`)
         .setImage('attachment://celestial_ship.png')
         .setFooter({ text: isVip ? "👑 Cosmic VIP: Instant Resonance Unlocked" : "CrystalBot Infinity Gate" });
 
       return message.reply({ embeds: [shipEmbed], files: [attachment] });
     }
+
 
 
     // ==========================================

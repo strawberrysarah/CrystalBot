@@ -304,94 +304,319 @@ async function addExperience(user, amount, message) {
 }
 
 // ==========================================
-// 4. CANVAS GRAPHICS ENGINE
+// CELESTIAL INFINITY SHIP CARD RENDERER
 // ==========================================
-
-// Celestial Astral Gate (Custom Ship Card)
 async function renderShipCard(u1, u2, resonance) {
-  const w = 800, h = 350;
+  const w = 1200;
+  const h = 600;
   const canvas = createCanvas(w, h);
   const ctx = canvas.getContext('2d');
 
-  // Background Nebula
-  const bg = ctx.createLinearGradient(0, 0, w, h);
-  bg.addColorStop(0, '#0d0118');
-  bg.addColorStop(0.5, '#280b3d');
-  bg.addColorStop(1, '#06000c');
-  ctx.fillStyle = bg;
+  // Dynamic Theme Colors by Resonance
+  let glowColor = '#7209b7';
+  let primaryHue = '#f72585';
+  let secondaryHue = '#4cc9f0';
+  let tagline = "DIFFERENT STARS, SAME SKY";
+
+  if (resonance >= 90) {
+    glowColor = '#ff4d6d';
+    primaryHue = '#ff007f';
+    secondaryHue = '#b5179e';
+    tagline = "CONSTELLATIONS WRITTEN IN ETERNITY";
+  } else if (resonance >= 75) {
+    glowColor = '#d946ef';
+    primaryHue = '#ec4899';
+    secondaryHue = '#8b5cf6';
+    tagline = "TWO ORBITS PULLED INTO HARMONY";
+  } else if (resonance >= 50) {
+    glowColor = '#8a2be2';
+    primaryHue = '#c084fc';
+    secondaryHue = '#38bdf8';
+    tagline = "DRIFTING THROUGH PARALLEL GALAXIES";
+  } else if (resonance >= 25) {
+    glowColor = '#4361ee';
+    primaryHue = '#7209b7';
+    secondaryHue = '#4cc9f0';
+    tagline = "FAINT RESONANCE ACROSS THE COSMOS";
+  } else {
+    glowColor = '#3a0ca3';
+    primaryHue = '#4a4e69';
+    secondaryHue = '#22223b';
+    tagline = "DISTANT WORLDS, COLLIDING SHADOWS";
+  }
+
+  // 1. Deep Midnight Cosmic Backdrop
+  const bgGrad = ctx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, 700);
+  bgGrad.addColorStop(0, '#1c032e');
+  bgGrad.addColorStop(0.5, '#0d0118');
+  bgGrad.addColorStop(1, '#040008');
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
-  // Starlight particles
-  for (let i = 0; i < 65; i++) {
-    ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.7 + 0.3})`;
+  // Soft corner nebula glows
+  function drawGlowBlob(x, y, r, color) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, color);
+    g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  drawGlowBlob(200, 300, 280, `${primaryHue}22`);
+  drawGlowBlob(1000, 300, 280, `${secondaryHue}22`);
+  drawGlowBlob(600, 300, 350, `${glowColor}33`);
+
+  // 2. Starfield & 4-Point Starlight Sparkles
+  function drawSparkle(x, y, size, alpha = 0.8) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+    ctx.shadowColor = primaryHue;
+    ctx.shadowBlur = 10;
+
     ctx.beginPath();
-    ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 2, 0, Math.PI * 2);
+    ctx.moveTo(0, -size);
+    ctx.quadraticCurveTo(0, 0, size, 0);
+    ctx.quadraticCurveTo(0, 0, 0, size);
+    ctx.quadraticCurveTo(0, 0, -size, 0);
+    ctx.quadraticCurveTo(0, 0, 0, -size);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Ambient Star Dust
+  for (let i = 0; i < 90; i++) {
+    const sx = Math.random() * w;
+    const sy = Math.random() * h;
+    const sr = Math.random() * 1.8 + 0.4;
+    ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.7 + 0.2})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // Constellation connector line
-  ctx.strokeStyle = resonance > 50 ? 'rgba(247, 37, 133, 0.8)' : 'rgba(112, 214, 255, 0.5)';
-  ctx.lineWidth = 4;
-  ctx.setLineDash([8, 6]);
-  ctx.beginPath();
-  ctx.moveTo(175, 175);
-  ctx.lineTo(625, 175);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  // Prominent glowing stars
+  const majorStars = [
+    [100, 100, 14], [1100, 100, 14], [100, 500, 12], [1100, 500, 12],
+    [340, 140, 10], [860, 140, 10], [540, 230, 8], [660, 230, 8],
+    [600, 480, 9], [250, 450, 7], [950, 450, 7]
+  ];
+  majorStars.forEach(([x, y, s]) => drawSparkle(x, y, s, 0.9));
 
-  // Central Core Geode
+  // Crescent Moons (Top Right & Bottom Left)
+  function drawMoon(x, y, r, rot) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 15;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0.5 * Math.PI, 1.5 * Math.PI, true);
+    ctx.bezierCurveTo(r * 0.4, -r, r * 0.4, r, 0, r);
+    ctx.fill();
+    ctx.restore();
+  }
+  drawMoon(1110, 80, 22, -0.4);
+  drawMoon(75, 460, 22, 0.4);
+
+  // 3. Central Infinity Ribbon
   ctx.save();
+  ctx.lineWidth = 18;
+  ctx.strokeStyle = primaryHue;
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = 30;
+
+  // Outer glowing infinity path
   ctx.beginPath();
-  ctx.arc(400, 175, 48, 0, Math.PI * 2);
-  ctx.fillStyle = resonance >= 70 ? '#f72585' : resonance >= 30 ? '#7209b7' : '#3a0ca3';
-  ctx.shadowColor = resonance >= 70 ? '#ff70a6' : '#b5179e';
-  ctx.shadowBlur = 25;
-  ctx.fill();
+  for (let t = 0; t <= Math.PI * 2; t += 0.02) {
+    const scale = 230;
+    const ix = 600 + (scale * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t));
+    const iy = 280 + (scale * Math.sin(t) * Math.cos(t)) / (1 + Math.sin(t) * Math.sin(t));
+    if (t === 0) ctx.moveTo(ix, iy);
+    else ctx.lineTo(ix, iy);
+  }
+  ctx.stroke();
+
+  // Core starlight inner stroke
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = '#ffffff';
+  ctx.shadowBlur = 15;
+  ctx.stroke();
   ctx.restore();
 
-  // Percentage in Core
+  // 4. Central Glowing Heart Bezel
+  function drawHeart(cx, cy, size) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.beginPath();
+    const topCurveHeight = size * 0.3;
+    ctx.moveTo(0, size * 0.3);
+    ctx.bezierCurveTo(0, -size * 0.2, -size * 0.7, -size * 0.2, -size * 0.7, size * 0.2);
+    ctx.bezierCurveTo(-size * 0.7, size * 0.6, 0, size * 0.9, 0, size * 1.1);
+    ctx.bezierCurveTo(0, size * 0.9, size * 0.7, size * 0.6, size * 0.7, size * 0.2);
+    ctx.bezierCurveTo(size * 0.7, -size * 0.2, 0, -size * 0.2, 0, size * 0.3);
+    ctx.closePath();
+  }
+
+  // Heart Backfill
+  drawHeart(600, 225, 78);
+  ctx.fillStyle = '#160226';
+  ctx.shadowColor = primaryHue;
+  ctx.shadowBlur = 35;
+  ctx.fill();
+
+  // Heart Outer Ring
+  drawHeart(600, 225, 78);
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = primaryHue;
+  ctx.stroke();
+
+  // Heart Inner Border
+  drawHeart(600, 225, 74);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#ffffff';
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 12;
+  ctx.stroke();
+  ctx.restore();
+
+  // Percentage in Heart Center
+  ctx.save();
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 26px sans-serif';
+  ctx.font = 'bold 44px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(`${resonance}%`, 400, 175);
+  ctx.shadowColor = primaryHue;
+  ctx.shadowBlur = 18;
+  ctx.fillText(`${resonance}%`, 600, 275);
+  ctx.restore();
 
-  // Faceted avatar drawing
-  async function drawAvatar(avatarUrl, x, y, r) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, r + 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#f72585';
-    ctx.shadowColor = '#ff70a6';
-    ctx.shadowBlur = 20;
+  // Mini floating hearts around the ribbon
+  const miniHearts = [
+    [430, 210, 14], [770, 210, 14], [390, 360, 10], [810, 360, 10], [600, 480, 12]
+  ];
+  miniHearts.forEach(([hx, hy, hs]) => {
+    drawHeart(hx, hy, hs);
+    ctx.fillStyle = primaryHue;
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 10;
     ctx.fill();
+    ctx.restore();
+  });
 
+  // 5. Dual Avatar Porters with Star Accents
+  async function drawFramedAvatar(avatarUrl, cx, cy, r) {
+    ctx.save();
+
+    // Outer Neon Glow Ring
     ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r + 8, 0, Math.PI * 2);
+    ctx.strokeStyle = primaryHue;
+    ctx.lineWidth = 6;
+    ctx.shadowColor = primaryHue;
+    ctx.shadowBlur = 25;
+    ctx.stroke();
+
+    // Secondary Accent Ring (Cyan Starlight)
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 4, 0, Math.PI * 2);
+    ctx.strokeStyle = secondaryHue;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Clip Avatar Image
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
 
     try {
       const img = await loadImage(avatarUrl);
-      ctx.drawImage(img, x - r, y - r, r * 2, r * 2);
+      ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
     } catch {
-      ctx.fillStyle = '#3a0ca3';
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+      ctx.fillStyle = '#2d0c45';
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
     }
     ctx.restore();
+
+    // 4-Point Cardinal Cross Stars on Avatar Frame
+    drawSparkle(cx, cy - r - 6, 12);
+    drawSparkle(cx, cy + r + 6, 12);
+    drawSparkle(cx - r - 6, cy, 12);
+    drawSparkle(cx + r + 6, cy, 12);
   }
 
-  await drawAvatar(u1.displayAvatarURL({ extension: 'png', size: 256 }), 175, 175, 75);
-  await drawAvatar(u2.displayAvatarURL({ extension: 'png', size: 256 }), 625, 175, 75);
+  await drawFramedAvatar(u1.displayAvatarURL({ extension: 'png', size: 512 }), 210, 280, 130);
+  await drawFramedAvatar(u2.displayAvatarURL({ extension: 'png', size: 512 }), 990, 280, 130);
 
-  ctx.font = 'bold 20px sans-serif';
+  // 6. Header Section (Celestial Resonance & Dynamic Tagline)
+  ctx.save();
   ctx.fillStyle = '#ffffff';
+  ctx.font = '36px serif';
   ctx.textAlign = 'center';
-  ctx.fillText(u1.username.slice(0, 12), 175, 280);
-  ctx.fillText(u2.username.slice(0, 12), 625, 280);
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 10;
+  ctx.fillText('Celestial Resonance', 600, 70);
+
+  // Small Moon beside Title
+  drawMoon(770, 58, 11, -0.2);
+
+  // Divider Lines & Center Diamond
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(320, 105);
+  ctx.lineTo(880, 105);
+  ctx.stroke();
+
+  drawSparkle(320, 105, 5);
+  drawSparkle(880, 105, 5);
+
+  // Dynamic Tagline Underneath
+  ctx.font = 'bold 15px sans-serif';
+  ctx.fillStyle = '#e2d4f0';
+  ctx.letterSpacing = '4px';
+  ctx.shadowBlur = 0;
+  ctx.fillText(tagline, 600, 108);
+  ctx.restore();
+
+  // 7. Footer Names & Combined Ship Tag
+  ctx.save();
+  ctx.textAlign = 'center';
+
+  // Elegant Script Names ("Selene + Kael")
+  ctx.font = 'italic 52px serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = primaryHue;
+  ctx.shadowBlur = 15;
+  ctx.fillText(`${u1.username}  +  ${u2.username}`, 600, 440);
+
+  // Lower Divider with Heart
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(420, 480);
+  ctx.lineTo(780, 480);
+  ctx.stroke();
+
+  drawHeart(600, 473, 8);
+  ctx.fillStyle = primaryHue;
+  ctx.fill();
+
+  // Portmanteau Ship Name (e.g., "SELKAEL")
+  const p1 = u1.username.slice(0, Math.ceil(u1.username.length / 2));
+  const p2 = u2.username.slice(Math.floor(u2.username.length / 2));
+  const comboName = `${p1}${p2}`.toUpperCase();
+
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillStyle = '#d8b4e2';
+  ctx.shadowBlur = 8;
+  ctx.fillText(`✦   ${comboName}   ✦`, 600, 520);
+  ctx.restore();
 
   return canvas.toBuffer('image/png');
 }
+
 
 // Universal Identity Meter (Gay, Lesbian, Rate)
 async function renderGauge(user, pct, label, colors) {
@@ -2119,7 +2344,9 @@ if (command === 'imposterlearn') {
       return message.reply({ embeds: [pEmbed] });
     }
 
-    // SHIP (CANVAS)
+        // ==========================================
+    // CELESTIAL SHIP COMMAND
+    // ==========================================
     if (command === 'ship') {
       if (!isVip) {
         const cd = checkCooldown(`ship_${message.author.id}`, 180000);
@@ -2127,27 +2354,26 @@ if (command === 'imposterlearn') {
       }
 
       const target = message.mentions.users.first();
-      if (!target) return message.reply("Tag someone to calculate resonance with: `cry!ship @user`");
+      if (!target || target.id === message.author.id) {
+        return message.reply("Tag someone to calculate resonance with: `cry!ship @user`");
+      }
 
+      // Generate dynamic resonance
       const resonance = Math.floor(Math.random() * 101);
-      const cardBuffer = await renderShipCard(message.author, target, resonance);
-      const attachment = new AttachmentBuilder(cardBuffer, { name: 'astral_ship.png' });
 
-      let reading = "";
-      if (resonance >= 90) reading = "🌌 *Written in the constellations. Absolute cosmic harmony!*";
-      else if (resonance >= 60) reading = "✨ *A strong magnetic celestial pull. The stars shine brightly on this!*";
-      else if (resonance >= 30) reading = "💫 *Orbiting cautiously. Requires patience and starlight.*";
-      else reading = "💥 *Supernova alert! Planetary collision imminent.*";
+      // Render the custom 1200x600 Infinity Card
+      const cardBuffer = await renderShipCard(message.author, target, resonance);
+      const attachment = new AttachmentBuilder(cardBuffer, { name: 'celestial_ship.png' });
 
       const shipEmbed = new EmbedBuilder()
         .setTitle('✧ CELESTIAL RESONANCE ✧')
-        .setColor('#f72585')
-        .setDescription(`**${message.author.username}** × **${target.username}**\n\n**Resonance Score:** **${resonance}%**\n${reading}`)
-        .setImage('attachment://astral_ship.png')
-        .setFooter({ text: isVip ? "👑 Cosmic VIP: Instant Resonance Unlocked" : "CrystalBot Astral Gate" });
+        .setColor(resonance >= 75 ? '#f72585' : resonance >= 50 ? '#7209b7' : '#3a0ca3')
+        .setImage('attachment://celestial_ship.png')
+        .setFooter({ text: isVip ? "👑 Cosmic VIP: Instant Resonance Unlocked" : "CrystalBot Infinity Gate" });
 
       return message.reply({ embeds: [shipEmbed], files: [attachment] });
     }
+
 
     // ==========================================
     // MODULE: SOCIAL INTERACTIONS (1-MIN CD)

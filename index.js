@@ -2077,7 +2077,7 @@ client.on('messageCreate', async message => {
 const mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL;
 
 if (!mongoURI) {
-  console.error("❌ CRITICAL: No MongoDB URI found! Check your .env file or Bot-Hosting Environment Variables.");
+  console.error("❌ CRITICAL: No MongoDB URI found! Check your .env file or variables.");
 } else {
   mongoose.connect(mongoURI)
     .then(() => console.log('🔮 Connected to MongoDB (crystalusers collection)'))
@@ -2088,7 +2088,9 @@ const botToken = process.env.TOKEN || process.env.DISCORD_TOKEN;
 if (!botToken) {
   console.error("❌ CRITICAL: No Discord Bot Token found! Check your .env file.");
 } else {
-  client.login(botToken);
+  client.login(botToken).catch(err => {
+    console.error('❌ Login Error:', err.message);
+  });
 }
 
 // ==========================================

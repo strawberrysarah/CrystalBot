@@ -2091,3 +2091,40 @@ if (!botToken) {
   client.login(botToken);
 }
 
+// ==========================================
+// 6. READY LISTENER, LOGGING & STARTUP
+// ==========================================
+client.once('ready', () => {
+  console.log(`✨ CrystalBot is online as ${client.user.tag}!`);
+  console.log(`🚀 Serving ${client.guilds.cache.size} servers. Ready for cry! commands.`);
+});
+
+// Debug logger to verify message detection
+client.on('messageCreate', msg => {
+  if (msg.author.bot) return;
+  if (msg.content.startsWith(PREFIX)) {
+    console.log(`[CMD RECEIVED] "${msg.content}" from ${msg.author.tag}`);
+  }
+});
+
+// Database & Login connection
+const mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL;
+
+if (!mongoURI) {
+  console.error("❌ CRITICAL: No MongoDB URI found! Check your .env file.");
+} else {
+  mongoose.connect(mongoURI)
+    .then(() => console.log('🔮 Connected to MongoDB (crystalusers collection)'))
+    .catch(err => console.error('MongoDB Connection Error:', err));
+}
+
+const botToken = process.env.TOKEN || process.env.DISCORD_TOKEN;
+if (!botToken) {
+  console.error("❌ CRITICAL: No Discord Bot Token found! Check your .env file.");
+} else {
+  client.login(botToken).catch(err => {
+    console.error('❌ Login Error:', err.message);
+  });
+}
+
+

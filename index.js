@@ -3084,13 +3084,13 @@ client.on('messageCreate', async message => {
 // ==========================================
 async function startCrystalEngine() {
   try {
-    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL;
+    const dbUri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL;
     const token = process.env.TOKEN || process.env.DISCORD_TOKEN;
 
-    if (!mongoUri) throw new Error("Missing MONGO_URI in Environment Variables.");
+    if (!dbUri) throw new Error("Missing MONGO_URI in Environment Variables.");
     if (!token) throw new Error("Missing TOKEN in Environment Variables.");
 
-    await mongoose.connect(mongoUri);
+    await mongoose.connect(dbUri);
     console.log('💎 Connected directly to MongoDB Cluster');
 
     await client.login(token);
@@ -3100,3 +3100,4 @@ async function startCrystalEngine() {
 }
 
 startCrystalEngine();
+

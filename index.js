@@ -2074,8 +2074,20 @@ client.on('messageCreate', async message => {
 // ==========================================
 // 6. DATABASE CONNECT & BOT LOGIN
 // ==========================================
-mongoose.connect(process.env.MONGO_URL)
-  .then(() => console.log('🔮 Connected to MongoDB (crystalusers collection)'))
-  .catch(err => console.error('MongoDB Connection Error:', err));
+const mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL;
 
-client.login(process.env.TOKEN);
+if (!mongoURI) {
+  console.error("❌ CRITICAL: No MongoDB URI found! Check your .env file or Bot-Hosting Environment Variables.");
+} else {
+  mongoose.connect(mongoURI)
+    .then(() => console.log('🔮 Connected to MongoDB (crystalusers collection)'))
+    .catch(err => console.error('MongoDB Connection Error:', err));
+}
+
+const botToken = process.env.TOKEN || process.env.DISCORD_TOKEN;
+if (!botToken) {
+  console.error("❌ CRITICAL: No Discord Bot Token found! Check your .env file.");
+} else {
+  client.login(botToken);
+}
+

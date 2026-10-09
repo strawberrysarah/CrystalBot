@@ -30,7 +30,6 @@ const client = new Client({
 });
 
 const PREFIX_REGEX = /^cry!\s*/i;
-const PREFIX = 'cry!';
 const cryCoin = '<:emoji_51:1531598791063638036>';
 const VIP_USER_ID = '1471141307400454245';
 
@@ -250,7 +249,7 @@ const userProfileSchema = new mongoose.Schema({
   dailyLastClaimed: { type: Date, default: null },
 
   // Inventory & Wardrobe
-  inventory: { type: Map, of: Number, default: () => new Map() },
+  inventory: { type: Map, of: Number, default: {} },
   equippedRole: { type: String, default: 'Default Prism' },
   rolesOwned: { type: [String], default: ['Default Prism'] },
 
@@ -276,10 +275,6 @@ async function getUser(userId) {
   let user = await User.findOne({ userId });
   if (!user) {
     user = await User.create({ userId });
-  }
-
-  if (!user.inventory || typeof user.inventory.get !== 'function') {
-    user.inventory = new Map();
   }
 
   // Check 24-hr resets on work attempts
@@ -309,16 +304,15 @@ async function addExperience(user, amount, message) {
 }
 
 // ==========================================
-// 4. CANVAS RENDERING ENGINES
+// CELESTIAL INFINITY SHIP CARD RENDERER (HD)
 // ==========================================
-
-// 4A. CELESTIAL INFINITY SHIP CARD RENDERER (1400x720 HD)
 async function renderShipCard(u1, u2, resonance) {
   const w = 1400;
   const h = 720;
   const canvas = createCanvas(w, h);
   const ctx = canvas.getContext('2d');
 
+  // Dynamic Theme Colors, Glows, and Taglines by Resonance
   let glowColor = '#7209b7';
   let primaryHue = '#f72585';
   let secondaryHue = '#4cc9f0';
@@ -375,6 +369,7 @@ async function renderShipCard(u1, u2, resonance) {
     loreReading = "An astral catastrophe. Do not make eye contact.";
   }
 
+  // 1. Cosmic Gradient Background
   const bgGrad = ctx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, 850);
   bgGrad.addColorStop(0, '#1c032e');
   bgGrad.addColorStop(0.5, '#0d0118');
@@ -382,6 +377,7 @@ async function renderShipCard(u1, u2, resonance) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
+  // Soft Nebula Glow Blobs
   function drawGlowBlob(x, y, r, color) {
     ctx.save();
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
@@ -395,6 +391,7 @@ async function renderShipCard(u1, u2, resonance) {
   drawGlowBlob(1150, 360, 320, `${secondaryHue}33`);
   drawGlowBlob(700, 360, 420, `${glowColor}44`);
 
+  // 2. Stars & Sparkles
   function drawSparkle(x, y, size, alpha = 0.9) {
     ctx.save();
     ctx.translate(x, y);
@@ -428,6 +425,7 @@ async function renderShipCard(u1, u2, resonance) {
   ];
   sparkles.forEach(([x, y, s]) => drawSparkle(x, y, s));
 
+  // Crescent Moons
   function drawMoon(x, y, r, rot) {
     ctx.save();
     ctx.translate(x, y);
@@ -444,12 +442,13 @@ async function renderShipCard(u1, u2, resonance) {
   drawMoon(1290, 90, 24, -0.4);
   drawMoon(90, 580, 24, 0.4);
 
-  // Infinity Ribbon
+  // 3. Central Infinity Ribbon
   ctx.save();
   ctx.lineWidth = 16;
   ctx.strokeStyle = primaryHue;
   ctx.shadowColor = glowColor;
   ctx.shadowBlur = 28;
+
   ctx.beginPath();
   for (let t = 0; t <= Math.PI * 2; t += 0.02) {
     const scale = 270;
@@ -466,7 +465,7 @@ async function renderShipCard(u1, u2, resonance) {
   ctx.stroke();
   ctx.restore();
 
-  // Heart
+  // 4. Central Heart Frame
   function drawHeartPath(cx, cy, s) {
     ctx.beginPath();
     ctx.moveTo(cx, cy - s * 0.2);
@@ -475,6 +474,7 @@ async function renderShipCard(u1, u2, resonance) {
     ctx.closePath();
   }
 
+  // Heart Background & Glow
   ctx.save();
   drawHeartPath(700, 335, 90);
   ctx.fillStyle = '#170126';
@@ -492,7 +492,7 @@ async function renderShipCard(u1, u2, resonance) {
   ctx.stroke();
   ctx.restore();
 
-  // Percentage Text
+  // Percentage Text Inside Heart
   ctx.save();
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 46px sans-serif';
@@ -503,9 +503,11 @@ async function renderShipCard(u1, u2, resonance) {
   ctx.fillText(`${resonance}%`, 700, 350);
   ctx.restore();
 
-  // Avatar Ports
+  // 5. Avatar Disks
   async function drawAvatarPort(user, cx, cy, r) {
     ctx.save();
+
+    // Outer Neon Ring
     ctx.beginPath();
     ctx.arc(cx, cy, r + 8, 0, Math.PI * 2);
     ctx.strokeStyle = primaryHue;
@@ -514,12 +516,14 @@ async function renderShipCard(u1, u2, resonance) {
     ctx.shadowBlur = 24;
     ctx.stroke();
 
+    // Inner Starlight Ring
     ctx.beginPath();
     ctx.arc(cx, cy, r + 3.5, 0, Math.PI * 2);
     ctx.strokeStyle = secondaryHue;
     ctx.lineWidth = 3;
     ctx.stroke();
 
+    // Avatar Clip
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.closePath();
@@ -535,6 +539,7 @@ async function renderShipCard(u1, u2, resonance) {
     }
     ctx.restore();
 
+    // Star accents on avatar perimeter
     drawSparkle(cx, cy - r - 6, 12);
     drawSparkle(cx, cy + r + 6, 12);
     drawSparkle(cx - r - 6, cy, 12);
@@ -544,7 +549,7 @@ async function renderShipCard(u1, u2, resonance) {
   await drawAvatarPort(u1, 240, 350, 140);
   await drawAvatarPort(u2, 1160, 350, 140);
 
-  // Header
+  // 6. Header (Title, Moon & Tagline)
   ctx.save();
   ctx.fillStyle = '#ffffff';
   ctx.font = '40px serif';
@@ -555,6 +560,7 @@ async function renderShipCard(u1, u2, resonance) {
 
   drawMoon(890, 66, 12, -0.2);
 
+  // Divider line
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -565,16 +571,18 @@ async function renderShipCard(u1, u2, resonance) {
   drawSparkle(400, 115, 6);
   drawSparkle(1000, 115, 6);
 
+  // Dynamic Tagline
   ctx.font = 'bold 15px sans-serif';
   ctx.fillStyle = '#e8d5f5';
   ctx.shadowBlur = 0;
   ctx.fillText(tagline, 700, 138);
   ctx.restore();
 
-  // Ship Name (Only ship name, no "name + name")
+  // 7. Footer: Ship Name & Lore Reading (No "Name + Name")
   ctx.save();
   ctx.textAlign = 'center';
 
+  // Portmanteau Combo Tag
   const part1 = u1.username.slice(0, Math.max(2, Math.ceil(u1.username.length / 2)));
   const part2 = u2.username.slice(Math.floor(u2.username.length / 2));
   const combo = `${part1}${part2}`.toUpperCase().replace(/[^A-Z0-9]/gi, '');
@@ -585,6 +593,7 @@ async function renderShipCard(u1, u2, resonance) {
   ctx.shadowBlur = 18;
   ctx.fillText(`✦   ${combo || 'CELESTIAL'}   ✦`, 700, 560);
 
+  // Lower Divider with Mini Heart
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -600,6 +609,7 @@ async function renderShipCard(u1, u2, resonance) {
   ctx.fill();
   ctx.restore();
 
+  // Lore Reading Baked into Image
   ctx.font = 'italic 18px sans-serif';
   ctx.fillStyle = '#d8b4e2';
   ctx.shadowBlur = 6;
@@ -609,454 +619,7 @@ async function renderShipCard(u1, u2, resonance) {
   return canvas.toBuffer('image/png');
 }
 
-// 4B. ASTRAL RANK CARD (850x280)
-async function renderRankCard(targetUser, dbUser, currentRank) {
-  const w = 850;
-  const h = 280;
-  const canvas = createCanvas(w, h);
-  const ctx = canvas.getContext('2d');
-
-  const lvl = dbUser.level || 1;
-  const exp = dbUser.exp || 0;
-  const nextExp = lvl * 100;
-  const progress = Math.min(1, Math.max(0, exp / nextExp));
-
-  const bg = ctx.createLinearGradient(0, 0, w, h);
-  bg.addColorStop(0, '#0d011a');
-  bg.addColorStop(0.5, '#17032d');
-  bg.addColorStop(1, '#080010');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
-
-  const cx = 140;
-  const cy = 140;
-  const r = 75;
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, r + 6, 0, Math.PI * 2);
-  ctx.strokeStyle = '#f72585';
-  ctx.lineWidth = 4;
-  ctx.shadowColor = '#f72585';
-  ctx.shadowBlur = 18;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-
-  try {
-    const url = targetUser.displayAvatarURL({ extension: 'png', forceStatic: true, size: 256 });
-    const img = await loadImage(url);
-    ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
-  } catch {
-    ctx.fillStyle = '#2d0c45';
-    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-  }
-  ctx.restore();
-
-  ctx.save();
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 34px sans-serif';
-  ctx.shadowColor = '#7209b7';
-  ctx.shadowBlur = 10;
-  const nameText = targetUser.username.length > 14 ? targetUser.username.slice(0, 13) + '…' : targetUser.username;
-  ctx.fillText(nameText, 260, 95);
-
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillStyle = '#c77dff';
-  ctx.fillText(`✧ ${dbUser.equippedRole || 'Explorer'}`, 260, 130);
-
-  ctx.textAlign = 'right';
-  ctx.font = 'bold 20px sans-serif';
-  ctx.fillStyle = '#e0aaff';
-  ctx.fillText(`RANK #${currentRank}`, 800, 95);
-
-  ctx.font = 'bold 28px sans-serif';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(`LEVEL ${lvl}`, 800, 135);
-  ctx.restore();
-
-  const barX = 260;
-  const barY = 175;
-  const barW = 540;
-  const barH = 24;
-
-  ctx.save();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-  ctx.beginPath();
-  ctx.roundRect(barX, barY, barW, barH, 12);
-  ctx.fill();
-
-  const barGrad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
-  barGrad.addColorStop(0, '#7209b7');
-  barGrad.addColorStop(0.5, '#f72585');
-  barGrad.addColorStop(1, '#4cc9f0');
-  ctx.fillStyle = barGrad;
-  ctx.shadowColor = '#f72585';
-  ctx.shadowBlur = 15;
-  ctx.beginPath();
-  ctx.roundRect(barX, barY, Math.max(24, barW * progress), barH, 12);
-  ctx.fill();
-  ctx.restore();
-
-  ctx.save();
-  ctx.font = 'bold 14px sans-serif';
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'right';
-  ctx.fillText(`${exp.toLocaleString()} / ${nextExp.toLocaleString()} EXP`, 800, 225);
-  ctx.restore();
-
-  return canvas.toBuffer('image/png');
-}
-
-// 4C. ASTRAL LEADERBOARD CARD (900x650)
-async function renderLeaderboardCard(topUsers, client) {
-  const w = 900;
-  const h = 650;
-  const canvas = createCanvas(w, h);
-  const ctx = canvas.getContext('2d');
-
-  const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, '#0c0217');
-  bg.addColorStop(0.5, '#17042c');
-  bg.addColorStop(1, '#07000e');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
-
-  ctx.save();
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 36px serif';
-  ctx.textAlign = 'center';
-  ctx.shadowColor = '#f72585';
-  ctx.shadowBlur = 15;
-  ctx.fillText('✧ ASTRAL SOVEREIGNTY ✧', w / 2, 60);
-
-  ctx.font = '14px sans-serif';
-  ctx.fillStyle = '#c8b6ff';
-  ctx.shadowBlur = 0;
-  ctx.fillText('TOP WEALTH ARCHONS OF THE REALM', w / 2, 90);
-  ctx.restore();
-
-  const startY = 120;
-  const rowH = 68;
-  const rowW = 800;
-  const rowX = (w - rowW) / 2;
-
-  for (let i = 0; i < Math.min(6, topUsers.length); i++) {
-    const entry = topUsers[i];
-    const y = startY + i * (rowH + 12);
-    let userObj = null;
-
-    try {
-      userObj = await client.users.fetch(entry.userId);
-    } catch {}
-
-    const name = userObj ? userObj.username : `Explorer (${entry.userId.slice(-4)})`;
-    const net = (entry.balance || 0) + (entry.bank || 0);
-
-    ctx.save();
-    ctx.fillStyle = i === 0 ? 'rgba(247, 37, 133, 0.12)' : 'rgba(255, 255, 255, 0.04)';
-    ctx.strokeStyle = i === 0 ? '#f72585' : 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(rowX, y, rowW, rowH, 10);
-    ctx.fill();
-    ctx.stroke();
-
-    const badgeColors = ['#ffd166', '#e0e1dd', '#cd7f32', '#9d4edd', '#9d4edd', '#9d4edd'];
-    ctx.fillStyle = badgeColors[i];
-    ctx.font = 'bold 22px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`#${i + 1}`, rowX + 40, y + 42);
-
-    if (userObj) {
-      const avR = 22;
-      const avX = rowX + 95;
-      const avY = y + rowH / 2;
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(avX, avY, avR, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      try {
-        const aImg = await loadImage(userObj.displayAvatarURL({ extension: 'png', size: 128 }));
-        ctx.drawImage(aImg, avX - avR, avY - avR, avR * 2, avR * 2);
-      } catch {}
-      ctx.restore();
-    }
-
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.fillText(name.slice(0, 16), rowX + 135, y + 42);
-
-    ctx.textAlign = 'right';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.fillStyle = '#70d6ff';
-    ctx.fillText(`${net.toLocaleString()} Crystals`, rowX + rowW - 25, y + 42);
-    ctx.restore();
-  }
-
-  return canvas.toBuffer('image/png');
-}
-
-// 4D. CELESTIAL PROFILE CARD (900x520)
-async function renderProfileCard(targetUser, dbUser, partnerUser) {
-  const w = 900;
-  const h = 520;
-  const canvas = createCanvas(w, h);
-  const ctx = canvas.getContext('2d');
-
-  const bg = ctx.createLinearGradient(0, 0, w, h);
-  bg.addColorStop(0, '#0c0116');
-  bg.addColorStop(0.5, '#19032e');
-  bg.addColorStop(1, '#06000c');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
-
-  const cx = 160;
-  const cy = 180;
-  const r = 85;
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, r + 7, 0, Math.PI * 2);
-  ctx.strokeStyle = '#f72585';
-  ctx.lineWidth = 5;
-  ctx.shadowColor = '#f72585';
-  ctx.shadowBlur = 22;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-
-  try {
-    const aImg = await loadImage(targetUser.displayAvatarURL({ extension: 'png', size: 256 }));
-    ctx.drawImage(aImg, cx - r, cy - r, r * 2, r * 2);
-  } catch {
-    ctx.fillStyle = '#2d0c45';
-    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-  }
-  ctx.restore();
-
-  ctx.save();
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 36px sans-serif';
-  ctx.shadowColor = '#7209b7';
-  ctx.shadowBlur = 12;
-  ctx.fillText(targetUser.username.slice(0, 14), 280, 130);
-
-  ctx.font = 'bold 18px sans-serif';
-  ctx.fillStyle = '#c77dff';
-  ctx.fillText(`✧ Title: ${dbUser.equippedRole || 'Default Prism'}`, 280, 170);
-
-  ctx.fillStyle = '#e0aaff';
-  ctx.fillText(`Level: ${dbUser.level || 1}  •  Attunement EXP: ${dbUser.exp || 0}`, 280, 205);
-  ctx.restore();
-
-  function drawGlassPanel(x, y, pw, ph, title, val1, val2) {
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(x, y, pw, ph, 12);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#f72585';
-    ctx.font = 'bold 15px sans-serif';
-    ctx.fillText(title, x + 16, y + 28);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '16px sans-serif';
-    ctx.fillText(val1, x + 16, y + 60);
-
-    ctx.fillStyle = '#c8b6ff';
-    ctx.font = '14px sans-serif';
-    ctx.fillText(val2, x + 16, y + 85);
-    ctx.restore();
-  }
-
-  drawGlassPanel(50, 310, 245, 110, '💎 CELESTIAL VAULT', `Wallet: ${(dbUser.balance || 0).toLocaleString()}`, `Bank: ${(dbUser.bank || 0).toLocaleString()}`);
-
-  const partnerName = partnerUser ? partnerUser.username.slice(0, 10) : 'None';
-  const romanceStatus = dbUser.spouseId ? `Married: ${partnerName}` : dbUser.datingPartnerId ? `Dating: ${partnerName}` : 'Single & Radiant';
-  drawGlassPanel(325, 310, 245, 110, '💖 ROMANTIC NEXUS', romanceStatus, `Lovies: ${dbUser.loviesCount || 0}`);
-
-  const pStage = dbUser.activePlant ? `Stage ${dbUser.activePlant.stage}/5` : 'Dormant';
-  const pName = dbUser.activePlant ? dbUser.activePlant.plantName.toUpperCase() : 'None';
-  drawGlassPanel(600, 310, 250, 110, '🌱 FLORA SANCTUARY', `Plant: ${pName}`, `Growth: ${pStage}`);
-
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(50, 460);
-  ctx.lineTo(850, 460);
-  ctx.stroke();
-
-  ctx.fillStyle = '#c8b6ff';
-  ctx.font = 'italic 14px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('✦ CrystalBot Soul Slate • Starlight Sanctuary ✦', w / 2, 490);
-  ctx.restore();
-
-  return canvas.toBuffer('image/png');
-}
-
-// 4E. GEODE CONSERVATORY CARD (850x480)
-async function renderPlantsCard(targetUser, dbUser) {
-  const w = 850;
-  const h = 480;
-  const canvas = createCanvas(w, h);
-  const ctx = canvas.getContext('2d');
-
-  const bg = ctx.createLinearGradient(0, 0, w, h);
-  bg.addColorStop(0, '#03140f');
-  bg.addColorStop(0.5, '#08332c');
-  bg.addColorStop(1, '#020a08');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
-
-  const glow = ctx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, 350);
-  glow.addColorStop(0, 'rgba(42, 157, 143, 0.15)');
-  glow.addColorStop(1, 'transparent');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, w, h);
-
-  const pActive = !!dbUser.activePlant;
-  const pName = (dbUser.activePlant?.plantName || 'Unplanted').toUpperCase();
-  const pStage = dbUser.activePlant?.stage || 0;
-  const fertilised = dbUser.activePlant?.fertilised || false;
-
-  const tx = 220;
-  const ty = 240;
-  const tr = 130;
-
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(tx, ty, tr, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(tx, ty + 90, 80, Math.PI, 0, true);
-  ctx.fillStyle = fertilised ? '#352208' : '#1e1a12';
-  ctx.fill();
-  ctx.restore();
-
-  if (pActive) {
-    ctx.save();
-    ctx.translate(tx, ty + 80);
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = '#2a9d8f';
-
-    if (pStage === 1) {
-      ctx.fillStyle = '#4f772d';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 10, 6, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (pStage === 2) {
-      ctx.strokeStyle = '#31572c';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(0, 5);
-      ctx.quadraticCurveTo(5, -20, 0, -45);
-      ctx.stroke();
-    } else if (pStage === 3) {
-      ctx.strokeStyle = '#132a13';
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.moveTo(0, 10);
-      ctx.quadraticCurveTo(10, -30, -5, -65);
-      ctx.stroke();
-    } else if (pStage === 4) {
-      ctx.strokeStyle = '#023e17';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(0, 10);
-      ctx.quadraticCurveTo(-15, -45, 10, -85);
-      ctx.stroke();
-    } else {
-      ctx.strokeStyle = '#132a13';
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.moveTo(0, 15);
-      ctx.quadraticCurveTo(0, -45, 10, -95);
-      ctx.stroke();
-
-      ctx.fillStyle = pName.includes('ROSE') ? '#d90429' : pName.includes('LOTUS') ? '#70d6ff' : '#e0b1cb';
-      ctx.beginPath();
-      ctx.arc(10, -95, 20, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  } else {
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    ctx.font = '16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('NO PLANT ACTIVE', tx, ty);
-    ctx.restore();
-  }
-
-  ctx.save();
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 36px serif';
-  ctx.fillText('✧ GEODE CONSERVATORY ✧', 400, 95);
-
-  ctx.font = 'bold 15px sans-serif';
-  ctx.fillStyle = '#2a9d8f';
-  ctx.fillText('ACTIVE NURSERY RECORD', 400, 130);
-
-  function drawGlassSpec(x, y, sw, sh, title, val) {
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.strokeStyle = 'rgba(42, 157, 143, 0.2)';
-    ctx.beginPath();
-    ctx.roundRect(x, y, sw, sh, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#8baf9a';
-    ctx.font = '13px sans-serif';
-    ctx.fillText(title, x + 16, y + 25);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillText(val, x + 16, y + 54);
-    ctx.restore();
-  }
-
-  drawGlassSpec(400, 175, 400, 75, 'SPECIMEN NAME', pActive ? pName : 'NOT ACTIVE');
-  drawGlassSpec(400, 270, 190, 75, 'GROWTH PROGRESS', pActive ? `Stage ${pStage}/5` : 'N/A');
-  drawGlassSpec(610, 270, 190, 75, 'FERTILISED', fertilised ? 'YES (Active)' : 'NO (None)');
-
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(400, 390);
-  ctx.lineTo(800, 390);
-  ctx.stroke();
-
-  ctx.fillStyle = '#8baf9a';
-  ctx.font = 'italic 14px sans-serif';
-  ctx.fillText('✦ Hydrate daily with cry!water • Harvest at Stage 5 ✦', 400, 425);
-  ctx.restore();
-
-  return canvas.toBuffer('image/png');
-}
-
-// 4F. Universal Identity Meter (Gay, Lesbian, Rate)
+// Universal Identity Meter (Gay, Lesbian, Rate)
 async function renderGauge(user, pct, label, colors) {
   const w = 700, h = 240;
   const canvas = createCanvas(w, h);
@@ -1090,6 +653,7 @@ async function renderGauge(user, pct, label, colors) {
   ctx.roundRect(tX, tY, tW, tH, 13);
   ctx.fill();
 
+  // Dynamic progress fill
   const fW = Math.max(16, (tW * pct) / 100);
   const grad = ctx.createLinearGradient(tX, 0, tX + tW, 0);
   colors.forEach((c, idx) => grad.addColorStop(idx / (colors.length - 1), c));
@@ -1099,6 +663,7 @@ async function renderGauge(user, pct, label, colors) {
   ctx.roundRect(tX, tY, fW, tH, 13);
   ctx.fill();
 
+  // Header & Texts
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'left';
@@ -1165,10 +730,10 @@ client.on('messageCreate', async message => {
           `**🛍️ Market:** \`shop\`, \`buy\`, \`sell\`, \`inv\`\n` +
           `**👗 Wardrobe:** \`roleshop\`, \`buyrole\`, \`equip\`, \`unequip\`, \`myroles\`\n` +
           `**🌱 Nursery:** \`sow\`, \`water\`, \`fertilise\`, \`harvest\`, \`plants\`\n` +
-          `**♟️ Games & Gambling:** \`cf\`, \`chessduel\`, \`imposter\`, \`imposterlearn\`, \`trivia\`, \`slots\`, \`beg\`, \`rps\`, \`dice\`\n` +
+          `**♟️ Games & Gambling:** \`chessduel\`, \`imposter\`, \`imposterlearn\`, \`trivia\`, \`slots\`, \`beg\`, \`rps\`\n` +
           `**💍 Romance:** \`propose\`, \`marry\`, \`divorce\`, \`partner\`, \`love\`, \`ship\`\n` +
           `**✨ Social:** \`slap\`, \`bonk\`, \`poke\`, \`punch\`, \`pinch\`, \`bite\`, \`hug\`, \`kiss\`, \`pat\`, \`highfive\`, \`dance\`, \`laugh\`, \`blush\`, \`twerk\`\n` +
-          `**🔮 Identity & Fun:** \`gay\`, \`lesbian\`, \`rate\`, \`crystalstorm\`, \`pickup\`, \`roast\`, \`anonymous\`\n` +
+          `**🔮 Identity & Fun:** \`gay\`, \`lesbian\`, \`rate\`, \`cf\`, \`dice\`, \`crystalstorm\`, \`pickup\`, \`roast\`, \`anonymous\`\n` +
           `**⚙️ Utility:** \`profile\`, \`rank\`, \`cd\`, \`cmds\`, \`help\`\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
           `*💡 Use \`cry!help\` to access the interactive category guide and rules!*`
@@ -1188,18 +753,21 @@ client.on('messageCreate', async message => {
       const imposterRem = getCooldownTimeRemaining('imposter_global', 600000);
       const stormRem = getCooldownTimeRemaining('crystalstorm_global', 10800000);
 
+      // Check daily
       let dailyStr = 'READY';
       if (user.dailyLastClaimed) {
         const diff = Date.now() - new Date(user.dailyLastClaimed).getTime();
         if (diff < 86400000) dailyStr = formatDuration(Math.ceil((86400000 - diff) / 1000));
       }
 
+      // Check love
       let loveStr = 'READY';
       if (user.lastLoveDate) {
         const diff = Date.now() - new Date(user.lastLoveDate).getTime();
         if (diff < 86400000) loveStr = formatDuration(Math.ceil((86400000 - diff) / 1000));
       }
 
+      // Check plant water
       let waterStr = 'READY';
       if (user.activePlant && user.activePlant.lastWatered) {
         const diff = Date.now() - new Date(user.activePlant.lastWatered).getTime();
@@ -1240,7 +808,7 @@ client.on('messageCreate', async message => {
               { name: '🪙 Economy', value: 'Mining shifts, vault ledgers, and allowance.', inline: true },
               { name: '🛍️ Market & Wardrobe', value: 'Item stores, geode seeds, and 31 vanity roles.', inline: true },
               { name: '🌱 Botanical Nursery', value: 'Grow, water, fertilise, and quiz-harvest plants.', inline: true },
-              { name: '♟️ Games & Gambling', value: 'Coinflip, chess duels, slots, and Mansion Imposter.', inline: true },
+              { name: '♟️ Games & Gambling', value: 'Tactical chess duels, slots, and Mansion Imposter.', inline: true },
               { name: '💍 Romance & Social', value: 'Dating, starlight weddings, and CDN interactions.', inline: true },
               { name: '🔮 Identity & Fun', value: 'Gay/lesbian gauges, crystalstorms, and roasts.', inline: true }
             );
@@ -1251,7 +819,7 @@ client.on('messageCreate', async message => {
               "`cry!bal [@user]` — Inspect crystal wallet and net worth (1m CD).\n" +
               "`cry!daily` — Collect your 667 crystal daily grant (24h CD).\n" +
               "`cry!pay @user <amt>` — Transfer crystals from your vault (1m CD).\n" +
-              "`cry!lb` — View Top 10 active server members via custom Canvas card."
+              "`cry!lb` — View Top 10 active server members (1m CD)."
             );
         } else if (cat === 'market') {
           embed.setTitle('✧ MODULE: MARKET & WARDROBE ✧')
@@ -1272,19 +840,17 @@ client.on('messageCreate', async message => {
               "`cry!water` — Hydrate your active plant (24h CD). Missing >3 days wilts it!\n" +
               "`cry!fertilise` — Use cocopeat once per plant to jump 2 stages instantly.\n" +
               "`cry!harvest` — Answer a botanical quiz on your plant to reap crystals!\n" +
-              "`cry!plants` — View your custom terrarium Canvas growth card."
+              "`cry!plants` — View your growth bar and historical harvest archive."
             );
         } else if (cat === 'games') {
           embed.setTitle('✧ MODULE: GAMES & GAMBLING ✧')
             .setDescription(
-              "`cry!cf <bet> <heads/tails>` — Flip a coin for crystals.\n" +
               "`cry!chessduel @user <wager>` — 3-minute tactical RPS duel!\n" +
               "`cry!imposter` — 4-phase Murder Mystery (10m Server Global CD).\n" +
               "`cry!trivia` — 15-second answering race for crystals.\n" +
               "`cry!slots <bet>` — Spin the crystal reels (3m CD).\n" +
               "`cry!beg` — Beg for 0-67 crystals (3m CD, 20 attempts limit).\n" +
-              "`cry!rps <bet> <r/p/s>` — Rock Paper Scissors against the bot.\n" +
-              "`cry!dice <bet>` — Roll against cosmic dice."
+              "`cry!rps <bet> <r/p/s>` — Rock Paper Scissors against the bot."
             );
         } else if (cat === 'romance') {
           embed.setTitle('✧ MODULE: ROMANCE & SOCIAL ✧')
@@ -1294,17 +860,19 @@ client.on('messageCreate', async message => {
               "`cry!divorce` — Break celestial bonds (with troll ping).\n" +
               "`cry!partner [@user]` — View dating, marriage, and lovies codex.\n" +
               "`cry!love` — Send daily affection to your spouse (24h CD).\n" +
-              "`cry!ship @user` or `cry!ship @user1 @user2` — Standalone HD card (3m CD, 0s for VIP).\n\n" +
+              "`cry!ship @user` — Astral Gate Canvas card (3m CD, 0s for VIP).\n\n" +
               "**Social (1m CD):** `slap`, `bonk`, `poke`, `punch`, `pinch`, `bite`, `hug`, `kiss`, `pat`, `highfive`, `dance`, `laugh`, `blush`, `twerk`"
             );
         } else if (cat === 'fun') {
           embed.setTitle('✧ MODULE: FUN & UTILITY ✧')
             .setDescription(
               "`cry!gay` / `cry!lesbian` / `cry!rate` — Dynamic canvas gauges!\n" +
+              "`cry!cf <bet> <heads/tails>` — Flip a coin for crystals.\n" +
+              "`cry!dice <bet>` — Roll against the cosmic dice.\n" +
               "`cry!crystalstorm` — Bless a random active user with 500 crystals (3h Server CD)!\n" +
               "`cry!pickup` / `cry!roast` — Aesthetic charm or ruthless burns.\n" +
               "`cry!anonymous <msg>` — Send an untraceable message (3 uses max).\n" +
-              "`cry!profile` / `cry!rank` — High definition Soul Codex visual canvas cards."
+              "`cry!profile` / `cry!rank` — Soul Codex visual profile."
             );
         }
         return embed;
@@ -1339,39 +907,62 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // PROFILE CODEX (CANVAS EMBED)
+    // PROFILE CODEX (cry!profile, cry!p, cry!me)
     if (command === 'profile' || command === 'p' || command === 'me') {
       const cd = checkCooldown(`prof_${message.author.id}`, 60000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Profile synchronization resting. Wait **${cd}s**.`);
 
       const target = message.mentions.users.first() || message.author;
       const user = await getUser(target.id);
-      
-      let partnerUser = null;
-      const pId = user.spouseId || user.datingPartnerId;
-      if (pId) {
-        partnerUser = await client.users.fetch(pId).catch(() => null);
-      }
+      const isTargetVip = target.id === VIP_USER_ID;
 
-      const cardBuffer = await renderProfileCard(target, user, partnerUser);
-      const attachment = new AttachmentBuilder(cardBuffer, { name: 'crystal_profile.png' });
-      return message.reply({ files: [attachment] });
+      const allSorted = await User.find({}).sort({ balance: -1 });
+      const rankIdx = allSorted.findIndex(u => u.userId === target.id);
+      const rankStr = rankIdx !== -1 ? `#${rankIdx + 1}` : 'Unranked';
+
+      const level = user.level || 1;
+      const exp = user.exp || 0;
+      const needed = level * 100;
+      const filled = Math.min(8, Math.floor((exp / needed) * 8));
+      const bar = `⬢`.repeat(filled) + `⬡`.repeat(8 - filled);
+
+      const badges = isTargetVip ? '👑 **Cosmic VIP** • 💎 **High Caliber** • 🌸 **Sanctuary Patron**' : '💠 **Mansion Traveler**';
+      const itemsCount = isTargetVip ? Object.keys(MARKET_ITEMS).length : Array.from(user.inventory.values()).reduce((a, b) => a + b, 0);
+
+      const embed = new EmbedBuilder()
+        .setAuthor({ name: `✧ CRYSTAL ARCHIVES: ${target.username} ✧`, iconURL: target.displayAvatarURL({ dynamic: true }) })
+        .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 256 }))
+        .setColor('#2d0c45')
+        .addFields(
+          { name: '🌌 Attunement & Level', value: `**Level ${level}** • \`[ ${bar} ]\`\n*EXP: ${exp} / ${needed}*`, inline: false },
+          { name: '💰 Vault Ledger', value: `**Balance:** ${user.balance.toLocaleString()} ${cryCoin}\n**Rank Standing:** \`${rankStr}\``, inline: true },
+          { name: '🔮 Wardrobe & Relics', value: `**Equipped:** ${user.equippedRole}\n**Relics Owned:** \`${itemsCount} items\``, inline: true },
+          { name: '💍 Romantic Bond', value: user.spouseId ? `Married to <@${user.spouseId}>` : user.datingPartnerId ? `Dating <@${user.datingPartnerId}>` : 'Single & Radiant', inline: false },
+          { name: '✨ Astral Badges', value: badges, inline: false }
+        )
+        .setFooter({ text: `Requested by ${message.author.username} • CrystalBot OS`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
+        .setTimestamp();
+
+      return message.reply({ embeds: [embed] });
     }
 
-    // RANK (CANVAS EMBED)
+    // RANK (cry!rank)
     if (command === 'rank') {
       const cd = checkCooldown(`rank_${message.author.id}`, 60000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Wait **${cd}s**.`);
 
       const target = message.mentions.users.first() || message.author;
       const user = await getUser(target.id);
-      const allSorted = await User.find({}).sort({ balance: -1 }).lean();
+      const allSorted = await User.find({}).sort({ balance: -1 });
       const idx = allSorted.findIndex(u => u.userId === target.id);
-      const rankPos = idx !== -1 ? idx + 1 : 1;
 
-      const cardBuffer = await renderRankCard(target, user, rankPos);
-      const attachment = new AttachmentBuilder(cardBuffer, { name: 'crystal_rank.png' });
-      return message.reply({ files: [attachment] });
+      const rankEmbed = new EmbedBuilder()
+        .setTitle('✧ ASTRAL LEADERBOARD RANK ✧')
+        .setColor('#7209b7')
+        .setDescription(`**Member:** <@${target.id}>\n**Global Standing:** \`#${idx !== -1 ? idx + 1 : 'Unranked'}\`\n**Balance:** **${user.balance.toLocaleString()}** ${cryCoin}\n**Attunement:** **Level ${user.level}**`)
+        .setThumbnail(target.displayAvatarURL({ dynamic: true }));
+
+      return message.reply({ embeds: [rankEmbed] });
     }
 
     // ==========================================
@@ -1478,17 +1069,33 @@ client.on('messageCreate', async message => {
       return message.reply(`✨ Transferred **${amt.toLocaleString()} ${cryCoin}** to <@${target.id}>!`);
     }
 
-    // LEADERBOARD (CANVAS EMBED)
+    // LEADERBOARD (cry!lb, cry!leaderboard)
     if (command === 'lb' || command === 'leaderboard') {
       const cd = checkCooldown(`lb_${message.author.id}`, 60000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Wait **${cd}s**.`);
 
-      const topUsers = await User.find({}).sort({ balance: -1 }).limit(6).lean();
-      if (!topUsers.length) return message.reply("No recorded crystal vaults found.");
+      const allUsers = await User.find({}).sort({ balance: -1 }).limit(100);
+      const activeMembers = [];
 
-      const cardBuffer = await renderLeaderboardCard(topUsers, client);
-      const attachment = new AttachmentBuilder(cardBuffer, { name: 'crystal_leaderboard.png' });
-      return message.reply({ files: [attachment] });
+      for (const doc of allUsers) {
+        if (message.guild.members.cache.has(doc.userId)) {
+          activeMembers.push(doc);
+        }
+        if (activeMembers.length >= 10) break;
+      }
+
+      const rows = activeMembers.map((doc, idx) => {
+        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
+        return `${medal} <@${doc.userId}> — **${doc.balance.toLocaleString()}** ${cryCoin} *(Lvl ${doc.level || 1})*`;
+      }).join('\n') || "*No active server members found on ledger.*";
+
+      const lbEmbed = new EmbedBuilder()
+        .setTitle('✧ CRYSTAL SOUL LEDGER — TOP 10 ✧')
+        .setColor('#2d0c45')
+        .setDescription(rows)
+        .setFooter({ text: `${message.guild.name} • Active Cohort` });
+
+      return message.reply({ embeds: [lbEmbed] });
     }
 
     // ==========================================
@@ -1699,12 +1306,10 @@ client.on('messageCreate', async message => {
       if (!user.rolesOwned.includes(roleItem.name)) user.rolesOwned.push(roleItem.name);
       user.equippedRole = roleItem.name;
 
+      // Assign Discord Server Role safely without pinging
       try {
-        const guildRole = await message.guild.roles.fetch(roleItem.roleId).catch(() => null);
-        if (guildRole) {
-          const member = await message.guild.members.fetch(message.author.id);
-          await member.roles.add(guildRole);
-        }
+        const guildRole = message.guild.roles.cache.get(roleItem.roleId);
+        if (guildRole) await message.member.roles.add(guildRole);
       } catch (err) {
         console.warn('Role assign failed in guild hierarchy:', err.message);
       }
@@ -1713,73 +1318,33 @@ client.on('messageCreate', async message => {
       return message.reply(`✨ Successfully unlocked and equipped the **${roleItem.name}** title!`);
     }
 
-    // EQUIP ROLE (FIXED: PROPER FETCH, PREVIOUS ROLE REMOVAL, HIERARCHY SAFEGUARD)
+    // EQUIP ROLE
     if (command === 'equip') {
       const rId = (args[0] || '').toLowerCase();
       const roleItem = ROLE_CATALOG.find(r => r.id === rId);
 
-      if (!roleItem) return message.reply("⚠️ Specify a valid role ID: `cry!equip <id>` (Check `cry!roleshop` for IDs).");
+      if (!roleItem) return message.reply("⚠️ Specify a valid role ID: `cry!equip <id>`");
 
       const user = await getUser(message.author.id);
       if (!user.rolesOwned.includes(roleItem.name) && !isVip) {
         return message.reply(`❌ You do not own the **${roleItem.name}** title! Buy it in \`cry!roleshop\`.`);
       }
 
-      const prevEquippedName = user.equippedRole;
       user.equippedRole = roleItem.name;
-      await user.save();
-
       try {
-        const member = await message.guild.members.fetch(message.author.id);
+        const guildRole = message.guild.roles.cache.get(roleItem.roleId);
+        if (guildRole) await message.member.roles.add(guildRole);
+      } catch {}
 
-        // Remove previously equipped role from Discord member if applicable
-        if (prevEquippedName && prevEquippedName !== roleItem.name) {
-          const prevCatalogItem = ROLE_CATALOG.find(r => r.name === prevEquippedName);
-          if (prevCatalogItem) {
-            const prevRole = await message.guild.roles.fetch(prevCatalogItem.roleId).catch(() => null);
-            if (prevRole && member.roles.cache.has(prevRole.id)) {
-              await member.roles.remove(prevRole).catch(() => {});
-            }
-          }
-        }
-
-        // Add newly equipped role
-        const targetRole = await message.guild.roles.fetch(roleItem.roleId).catch(() => null);
-        if (!targetRole) {
-          return message.reply(`✨ Equipped **${roleItem.name}** on your profile! *(Note: Role ID not found in server)*`);
-        }
-
-        const botMember = await message.guild.members.fetch(client.user.id);
-        if (botMember.roles.highest.position <= targetRole.position) {
-          return message.reply(`✨ Equipped **${roleItem.name}** to your profile card!\n⚠️ *Discord Warning: CrystalBot's highest role must be placed higher than <@&${targetRole.id}> in Server Settings to assign it in chat.*`);
-        }
-
-        await member.roles.add(targetRole);
-        return message.reply(`✨ Successfully equipped **${roleItem.name}** and applied the server role!`);
-      } catch (err) {
-        console.error('Role equip error:', err);
-        return message.reply(`✨ Equipped **${roleItem.name}** to your profile card! *(Role update noticed: ${err.message})*`);
-      }
+      await user.save();
+      return message.reply(`✨ Equipped **${roleItem.name}** as your active profile title!`);
     }
 
     // UNEQUIP ROLE
     if (command === 'unequip') {
       const user = await getUser(message.author.id);
-      const prevEquippedName = user.equippedRole;
       user.equippedRole = 'Default Prism';
       await user.save();
-
-      try {
-        const member = await message.guild.members.fetch(message.author.id);
-        const prevCatalogItem = ROLE_CATALOG.find(r => r.name === prevEquippedName);
-        if (prevCatalogItem) {
-          const prevRole = await message.guild.roles.fetch(prevCatalogItem.roleId).catch(() => null);
-          if (prevRole && member.roles.cache.has(prevRole.id)) {
-            await member.roles.remove(prevRole).catch(() => {});
-          }
-        }
-      } catch {}
-
       return message.reply("✨ Unequipped your active title! Reset to Default Prism.");
     }
 
@@ -1848,6 +1413,7 @@ client.on('messageCreate', async message => {
       const cd = checkCooldown(`water_${message.author.id}`, 86400000);
       if (cd > 0) return message.reply(`⏳ Your plant is fully hydrated! Next watering in **${formatDuration(cd)}**.`);
 
+      // Check decay
       if (user.activePlant.lastWatered) {
         const daysPassed = Math.floor((Date.now() - new Date(user.activePlant.lastWatered).getTime()) / (1000 * 60 * 60 * 24));
         if (daysPassed > 3) {
@@ -1949,50 +1515,45 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // PLANTS PROGRESS (CANVAS EMBED)
+    // PLANTS PROGRESS
     if (command === 'plants') {
-      const target = message.mentions.users.first() || message.author;
-      const user = await getUser(target.id);
+      const user = await getUser(message.author.id);
+      let desc = '';
 
-      const cardBuffer = await renderPlantsCard(target, user);
-      const attachment = new AttachmentBuilder(cardBuffer, { name: 'crystal_plants.png' });
-      return message.reply({ files: [attachment] });
+      if (!user.activePlant) {
+        desc = "**Active Plot:** 🕳️ *Empty Soil* (Sow a seed with `cry!sow <seed_id>`)\n\n";
+      } else {
+        const stage = user.activePlant.stage;
+        const bar = `⬢`.repeat(stage) + `⬡`.repeat(5 - stage);
+        desc = `🌱 **Active Plant:** **${user.activePlant.plantName}**\n` +
+               `**Growth Stage:** \`[ ${bar} ]\` **${stage}/5**\n` +
+               `💧 **Last Watered:** ${user.activePlant.lastWatered ? new Date(user.activePlant.lastWatered).toLocaleDateString() : 'Never'}\n` +
+               `🧪 **Fertilised:** ${user.activePlant.fertilised ? 'Yes (Maxed)' : 'No (Use cry!fertilise)'}\n\n`;
+      }
+
+      desc += "**🏆 Historical Harvest Vault:**\n";
+      if (!user.harvestedPlants || user.harvestedPlants.length === 0) {
+        desc += "*No plants harvested yet.*";
+      } else {
+        const counts = {};
+        user.harvestedPlants.forEach(p => counts[p] = (counts[p] || 0) + 1);
+        for (const [p, c] of Object.entries(counts)) {
+          desc += `• **${p}** — ${c}x\n`;
+        }
+      }
+
+      const pEmbed = new EmbedBuilder()
+        .setTitle(`✧ BOTANICAL SANCTUARY: ${message.author.username} ✧`)
+        .setColor('#2ec4b6')
+        .setDescription(desc)
+        .setFooter({ text: "Water daily with cry!water • Harvest at Stage 5 with cry!harvest" });
+
+      return message.reply({ embeds: [pEmbed] });
     }
 
     // ==========================================
     // MODULE: GAMES & GAMBLING
     // ==========================================
-
-    // COINFLIP (MOVED TO TOP OF GAMBLING MODULE)
-    if (command === 'coinflip' || command === 'cf') {
-      const bet = parseInt(args[0], 10);
-      const choice = (args[1] || '').toLowerCase();
-
-      if (isNaN(bet) || bet <= 0 || !['heads', 'h', 'tails', 't'].includes(choice)) {
-        return message.reply("⚠️ Usage: `cry!cf <bet> <heads/tails>`");
-      }
-
-      const cd = checkCooldown(`cf_${message.author.id}`, 60000);
-      if (cd > 0 && !isVip) return message.reply(`⏳ Wait **${cd}s**.`);
-
-      const user = await getUser(message.author.id);
-      if (user.balance < bet) return message.reply("❌ Insufficient crystals for this bet!");
-
-      const isHeads = Math.random() < 0.5;
-      const outcome = isHeads ? 'heads' : 'tails';
-      const won = choice.startsWith(outcome[0]);
-
-      if (won) {
-        user.balance += bet;
-        await addExperience(user, 10, message);
-        await user.save();
-        return message.reply(`🪙 The coin spun and landed on **${outcome.toUpperCase()}**! You won **+${bet.toLocaleString()} ${cryCoin}**! 🎉`);
-      } else {
-        user.balance -= bet;
-        await user.save();
-        return message.reply(`🪙 The coin spun and landed on **${outcome.toUpperCase()}**! You lost **-${bet.toLocaleString()} ${cryCoin}**.`);
-      }
-    }
 
     // CHESS DUEL
     if (command === 'chessduel') {
@@ -2097,80 +1658,85 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // MANSION IMPOSTER: COMPREHENSIVE GUIDE
-    if (command === 'imposterlearn') {
-      let page = 1;
-      const getLearnEmbed = (p) => {
-        const embed = new EmbedBuilder().setColor('#2d0c45');
-        if (p === 1) {
-          embed.setTitle('✧ MANSION IMPOSTER: GAMEPLAY & PHASES (1/3) ✧')
-            .setDescription(
-              "**Objective:** Innocents must uncover and banish the hidden Phantom before the mansion falls completely into darkness.\n\n" +
-              "**1. Expedition Lobby:**\n" +
-              "• Trigger with `cry!imposter`. Needs **at least 3 explorers** to begin.\n\n" +
-              "**2. Night Phase (30 seconds):**\n" +
-              "• Night falls and the mansion goes dark.\n" +
-              "• Players with secret roles receive private DM action buttons (Kill, Protect, or Inspect).\n\n" +
-              "**3. Morning Dawn & Roll Call:**\n" +
-              "• The bot announces night casualties or shields along with an updated list of **Survivors** and **Fallen Guests**.\n\n" +
-              "**4. Council & Banishment:**\n" +
-              "• **60s Debate Phase:** Discuss clues in chat.\n" +
-              "• **30s Secret Voting Phase:** Vote via interactive buttons to banish a suspect! Majority vote eliminates them."
-            );
-        } else if (p === 2) {
-          embed.setTitle('✧ MANSION IMPOSTER: SECRET ROLES (2/3) ✧')
-            .setDescription(
-              "🗡️ **The Phantom (The Imposter):**\n" +
-              "• *Objective:* Eliminate players until parity with survivors is reached.\n" +
-              "• *Night Action:* Receives DM buttons each night to secretly choose a victim to assassinate.\n\n" +
-              "🔮 **The Oracle (The Detective):**\n" +
-              "• *Objective:* Identify the Phantom and guide the innocents.\n" +
-              "• *Night Action:* Inspects one player per night. The bot whispers back whether their aura is pure or dark resonance.\n\n" +
-              "🛡️ **The Guardian (The Bodyguard):**\n" +
-              "• *Objective:* Keep guests alive.\n" +
-              "• *Night Action:* Wards one player each night. If the Phantom attacks them, the murder is blocked!\n" +
-              "• *Restriction:* Cannot shield the same guest on consecutive nights.\n\n" +
-              "🕯️ **The Explorer (The Innocent):**\n" +
-              "• *Objective:* Survive, analyze behavioral clues, debate, and vote out the Phantom."
-            );
-        } else {
-          embed.setTitle('✧ MANSION IMPOSTER: REWARDS & RULES (3/3) ✧')
-            .setDescription(
-              "**🏆 Victory Conditions & Rewards:**\n" +
-              "• **Innocents Win:** Banishing the Phantom awards all surviving innocents, the Oracle, and the Guardian **+200 crystals** each!\n" +
-              "• **Phantom Wins:** Reducing survivors down to 1 (or parity) awards the Phantom the grand pot of **+500 crystals**!\n\n" +
-              "**⚠️ Important Rules:**\n" +
-              "• **Keep DMs Open:** The bot must be able to DM you your secret night action buttons!\n" +
-              "• **Tied Votes:** If votes tie or time expires without a majority, nobody is banished and night falls immediately."
-            );
-        }
-        embed.setFooter({ text: `Page ${p} of 3 • Use buttons below to navigate` });
-        return embed;
-      };
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('imp_prev').setLabel('◀ Previous').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('imp_next').setLabel('Next ▶').setStyle(ButtonStyle.Primary)
-      );
-
-      const lMsg = await message.reply({ embeds: [getLearnEmbed(1)], components: [row] });
-      const collector = lMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
-
-      collector.on('collect', async i => {
-        if (i.user.id !== message.author.id) return i.reply({ content: "Open your own guide with cry!imposterlearn", ephemeral: true });
-        if (i.customId === 'imp_prev') page = page > 1 ? page - 1 : 3;
-        else page = page < 3 ? page + 1 : 1;
-        await i.update({ embeds: [getLearnEmbed(page)], components: [row] });
-      });
-
-      collector.on('end', () => {
-        row.components.forEach(b => b.setDisabled(true));
-        lMsg.edit({ components: [row] }).catch(() => {});
-      });
-      return;
+    // ==========================================
+// MANSION IMPOSTER: COMPREHENSIVE GUIDE
+// ==========================================
+if (command === 'imposterlearn') {
+  let page = 1;
+  const getLearnEmbed = (p) => {
+    const embed = new EmbedBuilder().setColor('#2d0c45');
+    if (p === 1) {
+      embed.setTitle('✧ MANSION IMPOSTER: GAMEPLAY & PHASES (1/3) ✧')
+        .setDescription(
+          "**Objective:** Innocents must uncover and banish the hidden Phantom before the mansion falls completely into darkness.\n\n" +
+          "**1. Expedition Lobby:**\n" +
+          "• Trigger with `cry!imposter`. Needs **at least 3 explorers** to begin.\n\n" +
+          "**2. Night Phase (30 seconds):**\n" +
+          "• Night falls and the mansion goes dark.\n" +
+          "• Players with secret roles receive private DM action buttons (Kill, Protect, or Inspect).\n\n" +
+          "**3. Morning Dawn & Roll Call:**\n" +
+          "• The bot announces night casualties or shields along with an updated list of **Survivors** and **Fallen Guests**.\n\n" +
+          "**4. Council & Banishment:**\n" +
+          "• **60s Debate Phase:** Discuss clues in chat.\n" +
+          "• **30s Secret Voting Phase:** Vote via interactive buttons to banish a suspect! Majority vote eliminates them."
+        );
+    } else if (p === 2) {
+      embed.setTitle('✧ MANSION IMPOSTER: SECRET ROLES (2/3) ✧')
+        .setDescription(
+          "🗡️ **The Phantom (The Imposter):**\n" +
+          "• *Objective:* Eliminate players until parity with survivors is reached.\n" +
+          "• *Night Action:* Receives DM buttons each night to secretly choose a victim to assassinate.\n\n" +
+          "🔮 **The Oracle (The Detective):**\n" +
+          "• *Objective:* Identify the Phantom and guide the innocents.\n" +
+          "• *Night Action:* Inspects one player per night. The bot whispers back whether their aura is pure or dark resonance.\n\n" +
+          "🛡️ **The Guardian (The Bodyguard):**\n" +
+          "• *Objective:* Keep guests alive.\n" +
+          "• *Night Action:* Wards one player each night. If the Phantom attacks them, the murder is blocked!\n" +
+          "• *Restriction:* Cannot shield the same guest on consecutive nights.\n\n" +
+          "🕯️ **The Explorer (The Innocent):**\n" +
+          "• *Objective:* Survive, analyze behavioral clues, debate, and vote out the Phantom."
+        );
+    } else {
+      embed.setTitle('✧ MANSION IMPOSTER: REWARDS & RULES (3/3) ✧')
+        .setDescription(
+          "**🏆 Victory Conditions & Rewards:**\n" +
+          "• **Innocents Win:** Banishing the Phantom awards all surviving innocents, the Oracle, and the Guardian **+200 crystals** each!\n" +
+          "• **Phantom Wins:** Reducing survivors down to 1 (or parity) awards the Phantom the grand pot of **+500 crystals**!\n\n" +
+          "**⚠️ Important Rules:**\n" +
+          "• **Keep DMs Open:** The bot must be able to DM you your secret night action buttons!\n" +
+          "• **Tied Votes:** If votes tie or time expires without a majority, nobody is banished and night falls immediately."
+        );
     }
+    embed.setFooter({ text: `Page ${p} of 3 • Use buttons below to navigate` });
+    return embed;
+  };
 
-    // MULTI-ROUND MANSION IMPOSTER
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('imp_prev').setLabel('◀ Previous').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('imp_next').setLabel('Next ▶').setStyle(ButtonStyle.Primary)
+  );
+
+  const lMsg = await message.reply({ embeds: [getLearnEmbed(1)], components: [row] });
+  const collector = lMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+
+  collector.on('collect', async i => {
+    if (i.user.id !== message.author.id) return i.reply({ content: "Open your own guide with cry!imposterlearn", ephemeral: true });
+    if (i.customId === 'imp_prev') page = page > 1 ? page - 1 : 3;
+    else page = page < 3 ? page + 1 : 1;
+    await i.update({ embeds: [getLearnEmbed(page)], components: [row] });
+  });
+
+  collector.on('end', () => {
+    row.components.forEach(b => b.setDisabled(true));
+    lMsg.edit({ components: [row] }).catch(() => {});
+  });
+  return;
+}
+
+
+        // ==========================================
+    // MULTI-ROUND MANSION IMPOSTER (EXPANDED)
+    // ==========================================
     if (command === 'imposter') {
       const cd = checkCooldown('imposter_global', 600000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Mansion corridors are sealed under investigation! Server Cooldown: **${formatDuration(cd)}**.`);
@@ -2208,12 +1774,14 @@ client.on('messageCreate', async message => {
         activeGames.set(message.channel.id, true);
         const playerArray = Array.from(players);
         
+        // Setup state
         const roles = new Map();
         let living = [...playerArray];
         let dead = [];
         let lastProtected = null;
         let dayCount = 1;
 
+        // Shuffle & assign roles
         const shuffled = [...playerArray].sort(() => Math.random() - 0.5);
         const phantomId = shuffled[0];
         roles.set(phantomId, 'Phantom');
@@ -2222,6 +1790,7 @@ client.on('messageCreate', async message => {
         let guardianId = null;
 
         if (shuffled.length === 3 || shuffled.length === 4) {
+          // 1 special role randomly
           if (Math.random() < 0.5) {
             oracleId = shuffled[1];
             roles.set(oracleId, 'Oracle');
@@ -2236,10 +1805,12 @@ client.on('messageCreate', async message => {
           roles.set(guardianId, 'Guardian');
         }
 
+        // Remaining are Explorers
         for (const pid of playerArray) {
           if (!roles.has(pid)) roles.set(pid, 'Explorer');
         }
 
+        // Send Initial Role Dispatches
         for (const pid of playerArray) {
           try {
             const member = await message.guild.members.fetch(pid);
@@ -2258,6 +1829,7 @@ client.on('messageCreate', async message => {
 
         message.channel.send(`🕯️ **The heavy gates lock shut! Roles have been dispatched to your private DMs.** (${playerArray.length} explorers entered)`);
 
+        // Function: Render Roll Call Board
         const renderRollCall = (day) => {
           const aliveLines = living.map(id => `• <@${id}>`).join('\n') || '*None*';
           const deadLines = dead.map(d => `• ~~<@${d.id}>~~ *(${d.reason})*`).join('\n') || '*None yet*';
@@ -2271,7 +1843,9 @@ client.on('messageCreate', async message => {
             );
         };
 
+        // Core Day/Night Loop
         async function runRound() {
+          // Check Win Conditions
           if (!living.includes(phantomId)) {
             message.channel.send("🎉 **JUSTICE RESTORED!** The Phantom has been banished from the mansion!\n**INNOCENTS WIN!**");
             for (const sid of living) {
@@ -2294,11 +1868,13 @@ client.on('messageCreate', async message => {
             return;
           }
 
+          // NIGHT PHASE
           message.channel.send(`🌑 **NIGHT ${dayCount}: Pitch darkness engulfs the corridors...** Special roles, check your DMs! (30 seconds)`);
 
           let targetKillId = null;
           let targetProtectId = null;
 
+          // Phantom DM Action
           try {
             const pMember = await message.guild.members.fetch(phantomId);
             const killButtons = living.filter(id => id !== phantomId).map(id => {
@@ -2315,6 +1891,7 @@ client.on('messageCreate', async message => {
             });
           } catch {}
 
+          // Guardian DM Action
           if (guardianId && living.includes(guardianId)) {
             try {
               const gMember = await message.guild.members.fetch(guardianId);
@@ -2334,6 +1911,7 @@ client.on('messageCreate', async message => {
             } catch {}
           }
 
+          // Oracle DM Action
           if (oracleId && living.includes(oracleId)) {
             try {
               const oMember = await message.guild.members.fetch(oracleId);
@@ -2356,6 +1934,7 @@ client.on('messageCreate', async message => {
             } catch {}
           }
 
+          // Wait 30 seconds for night resolution
           setTimeout(async () => {
             let morningMessage = "";
 
@@ -2372,10 +1951,12 @@ client.on('messageCreate', async message => {
             message.channel.send(`🌅 **MORNING BREAKS (DAY ${dayCount})**\n${morningMessage}`);
             message.channel.send({ embeds: [renderRollCall(dayCount)] });
 
+            // Check if Phantom won overnight
             if (living.length <= 2 || !living.includes(phantomId)) {
               return runRound();
             }
 
+            // COUNCIL DISCUSSION & VOTING
             message.channel.send("🗣️ **Emergency Council initiated!** You have **60 seconds** to debate clues before voting opens!");
 
             setTimeout(async () => {
@@ -2431,14 +2012,16 @@ client.on('messageCreate', async message => {
                 dayCount++;
                 setTimeout(() => runRound(), 5000);
               });
-            }, 60000);
-          }, 30000);
+            }, 60000); // 60s discussion
+          }, 30000); // 30s night
         }
 
+        // Start Round 1
         runRound();
       });
       return;
     }
+
 
     // BEG
     if (command === 'beg') {
@@ -2514,7 +2097,7 @@ client.on('messageCreate', async message => {
       const slotsEmbed = new EmbedBuilder()
         .setTitle(`🎰 CRYSTAL SLOTS • ${title}`)
         .setColor('#f72585')
-        .setDescription(`[ ${s1} | ${s2} | ${s3} ]\n\n${winAmt > 0 ? `You won **+${winAmt.toLocaleString()}**${cryCoin}!` : `You lost **-${bet.toLocaleString()}**${cryCoin}.`}`)
+        .setDescription(`[ ${s1} | ${s2} | ${s3} ]\n\n${winAmt > 0 ? `You won **+${winAmt.toLocaleString()}** ${cryCoin}!` : `You lost **-${bet.toLocaleString()}** ${cryCoin}.`}`)
         .setFooter({ text: `Current Balance: ${user.balance.toLocaleString()} crystals` });
 
       return message.reply({ embeds: [slotsEmbed] });
@@ -2588,33 +2171,6 @@ client.on('messageCreate', async message => {
         }
       });
       return;
-    }
-
-    // DICE
-    if (command === 'dice') {
-      const bet = parseInt(args[0], 10);
-      if (isNaN(bet) || bet <= 0) return message.reply("⚠️ Usage: `cry!dice <bet>`");
-
-      const cd = checkCooldown(`dice_${message.author.id}`, 60000);
-      if (cd > 0 && !isVip) return message.reply(`⏳ Wait **${cd}s**.`);
-
-      const user = await getUser(message.author.id);
-      if (user.balance < bet) return message.reply("❌ Insufficient crystals!");
-
-      const playerRoll = Math.floor(Math.random() * 6) + 1;
-      const botRoll = Math.floor(Math.random() * 6) + 1;
-
-      if (playerRoll > botRoll) {
-        user.balance += bet;
-        await user.save();
-        return message.reply(`🎲 You rolled **${playerRoll}** vs my **${botRoll}**! You won **+${bet.toLocaleString()} ${cryCoin}**!`);
-      } else if (botRoll > playerRoll) {
-        user.balance -= bet;
-        await user.save();
-        return message.reply(`🎲 You rolled **${playerRoll}** vs my **${botRoll}**! You lost **-${bet.toLocaleString()} ${cryCoin}**.`);
-      } else {
-        return message.reply(`🎲 Both rolled **${playerRoll}**! It's a draw. Bet refunded.`);
-      }
     }
 
     // ==========================================
@@ -2789,35 +2345,28 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [pEmbed] });
     }
 
-    // CELESTIAL SHIP COMMAND (FIXED: 2-USER OR SELF-SHIP, COOLDOWN APPLIES ONLY ON SUCCESS, STANDALONE HD CARD)
+        // ==========================================
+    // CELESTIAL SHIP COMMAND
+    // ==========================================
     if (command === 'ship') {
-      const mentions = message.mentions.users;
-      let user1, user2;
-
-      if (mentions.size >= 2) {
-        const iter = mentions.values();
-        user1 = iter.next().value;
-        user2 = iter.next().value;
-      } else if (mentions.size === 1) {
-        user1 = message.author;
-        user2 = mentions.first();
-      } else {
-        return message.reply("⚠️ Specify who to ship!\n• Ship yourself: `cry!ship @user`\n• Ship two members: `cry!ship @user1 @user2`");
-      }
-
-      if (user1.id === user2.id) {
-        return message.reply("Self-resonance detected: You cannot ship someone with themselves!");
-      }
-
       if (!isVip) {
         const cd = checkCooldown(`ship_${message.author.id}`, 180000);
         if (cd > 0) return message.reply(`⏳ Astral resonance cooling down. Wait **${cd}s**.`);
       }
 
+      const target = message.mentions.users.first();
+      if (!target || target.id === message.author.id) {
+        return message.reply("⚠️ Tag someone to calculate resonance with: `cry!ship @user`");
+      }
+
+      // Generate dynamic resonance
       const resonance = Math.floor(Math.random() * 101);
-      const cardBuffer = await renderShipCard(user1, user2, resonance);
+
+      // Render the standalone 1400x720 graphic
+      const cardBuffer = await renderShipCard(message.author, target, resonance);
       const attachment = new AttachmentBuilder(cardBuffer, { name: 'celestial_ship.png' });
 
+      // Send cleanly with zero external embed text
       return message.reply({ files: [attachment] });
     }
 
@@ -2945,6 +2494,64 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [embed], files: [attach] });
     }
 
+    // COINFLIP (cry!coinflip, cry!cf)
+    if (command === 'coinflip' || command === 'cf') {
+      const bet = parseInt(args[0], 10);
+      const choice = (args[1] || '').toLowerCase();
+
+      if (isNaN(bet) || bet <= 0 || !['heads', 'h', 'tails', 't'].includes(choice)) {
+        return message.reply("⚠️ Usage: `cry!cf <bet> <heads/tails>`");
+      }
+
+      const cd = checkCooldown(`cf_${message.author.id}`, 60000);
+      if (cd > 0 && !isVip) return message.reply(`⏳ Wait **${cd}s**.`);
+
+      const user = await getUser(message.author.id);
+      if (user.balance < bet) return message.reply("❌ Insufficient crystals for this bet!");
+
+      const isHeads = Math.random() < 0.5;
+      const outcome = isHeads ? 'heads' : 'tails';
+      const won = choice.startsWith(outcome[0]);
+
+      if (won) {
+        user.balance += bet;
+        await addExperience(user, 10, message);
+        await user.save();
+        return message.reply(`🪙 The coin spun and landed on **${outcome.toUpperCase()}**! You won **+${bet.toLocaleString()} ${cryCoin}**! 🎉`);
+      } else {
+        user.balance -= bet;
+        await user.save();
+        return message.reply(`🪙 The coin spun and landed on **${outcome.toUpperCase()}**! You lost **-${bet.toLocaleString()} ${cryCoin}**.`);
+      }
+    }
+
+    // DICE
+    if (command === 'dice') {
+      const bet = parseInt(args[0], 10);
+      if (isNaN(bet) || bet <= 0) return message.reply("⚠️ Usage: `cry!dice <bet>`");
+
+      const cd = checkCooldown(`dice_${message.author.id}`, 60000);
+      if (cd > 0 && !isVip) return message.reply(`⏳ Wait **${cd}s**.`);
+
+      const user = await getUser(message.author.id);
+      if (user.balance < bet) return message.reply("❌ Insufficient crystals!");
+
+      const playerRoll = Math.floor(Math.random() * 6) + 1;
+      const botRoll = Math.floor(Math.random() * 6) + 1;
+
+      if (playerRoll > botRoll) {
+        user.balance += bet;
+        await user.save();
+        return message.reply(`🎲 You rolled **${playerRoll}** vs my **${botRoll}**! You won **+${bet.toLocaleString()} ${cryCoin}**!`);
+      } else if (botRoll > playerRoll) {
+        user.balance -= bet;
+        await user.save();
+        return message.reply(`🎲 You rolled **${playerRoll}** vs my **${botRoll}**! You lost **-${bet.toLocaleString()} ${cryCoin}**.`);
+      } else {
+        return message.reply(`🎲 Both rolled **${playerRoll}**! It's a draw. Bet refunded.`);
+      }
+    }
+
     // CRYSTALSTORM (3-HR GLOBAL CD)
     if (command === 'crystalstorm') {
       const cd = checkCooldown('crystalstorm_global', 10800000);
@@ -2980,6 +2587,7 @@ client.on('messageCreate', async message => {
 
       const target = message.mentions.users.first() || message.author;
 
+      // Special Mother's Shield for VIP
       if (target.id === VIP_USER_ID) {
         return message.channel.send("You lil piece of ox shit, can't mess with my mom.");
       }
@@ -2998,6 +2606,7 @@ client.on('messageCreate', async message => {
       const text = args.join(' ');
       if (!text) return message.reply("⚠️ Specify your message: `cry!anonymous <your message>`");
 
+      // Delete user's message immediately
       try {
         await message.delete();
       } catch {}
@@ -3013,6 +2622,7 @@ client.on('messageCreate', async message => {
 
       await message.channel.send({ embeds: [anonEmbed] });
 
+      // Silent Admin Audit Log to VIP DM
       try {
         const vipUser = await client.users.fetch(VIP_USER_ID);
         if (vipUser) {
@@ -3084,13 +2694,13 @@ client.on('messageCreate', async message => {
 // ==========================================
 async function startCrystalEngine() {
   try {
-    const dbUri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.MONGO_URL;
+    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
     const token = process.env.TOKEN || process.env.DISCORD_TOKEN;
 
-    if (!dbUri) throw new Error("Missing MONGO_URI in Environment Variables.");
+    if (!mongoUri) throw new Error("Missing MONGO_URI in Environment Variables.");
     if (!token) throw new Error("Missing TOKEN in Environment Variables.");
 
-    await mongoose.connect(dbUri);
+    await mongoose.connect(mongoUri);
     console.log('💎 Connected directly to MongoDB Cluster');
 
     await client.login(token);
@@ -3100,4 +2710,3 @@ async function startCrystalEngine() {
 }
 
 startCrystalEngine();
-

@@ -2074,7 +2074,7 @@ client.on('messageCreate', async message => {
 // ==========================================
 // 6. DATABASE CONNECT & BOT LOGIN
 // ==========================================
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log('🔮 Connected to MongoDB (crystalusers collection)'))
   .catch(err => console.error('MongoDB Connection Error:', err));
 

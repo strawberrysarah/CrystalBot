@@ -254,13 +254,32 @@ const TRIVIA_QUESTIONS = [
   { q: "What is the hardest known naturally occurring mineral on Earth?", a: "diamond" },
   { q: "What element gives natural amethyst its signature purple hue?", a: "iron" },
   { q: "What is the capital of Japan?", a: "tokyo" },
-  { q: "Which anime features characters fighting colossal humanoids with 3D maneuver gear?", a: "attack on titan" },
+  { q: "Which anime features characters fighting colossal humanoids with 3D maneuver gear?", a: "attack on titan"},
   { q: "What is the chemical symbol for the element Gold?", a: "au" },
   { q: "How many squares are there on a standard tournament chessboard?", a: "64" },
   { q: "Which gas makes up approximately 78% of Earth's atmosphere?", a: "nitrogen" },
   { q: "In cricket, how many runs are awarded when a batter hits the ball over the boundary on the full?", a: "6" },
   { q: "Which legendary Studio Ghibli film tells the story of an engineer designing airplanes?", a: "the wind rises" },
-  { q: "What is the powerhouse organelle of eukaryotic cells?", a: "mitochondria" }
+  { q: "What is the powerhouse organelle of eukaryotic cells?", a: "mitochondria" },
+  { q: "What is the largest ocean on Earth?", a: "Pacific"},
+  { q: "What is the fastest land animal?", a: "Cheetah"},
+  { q: "Which scientist formulated the theory of relativity?", a: "Einstein"},
+  { q: "What is the name of the fantasy drama series based on George R.R. Martin's novels?", a: "Game of thrones"},
+  { q: "Which planet is known as the Red Planet?", a: "Mars"},
+  { q: "Who is the founder and CEO of SpaceX?", a: "Elon Musk"},
+  { q: "Which superhero is known as the Man of Steel?", a: "Superman"},
+  { q: "How many continents are there on Earth?", a: "7"},
+  { q: "How many sides does a decagon have?", a: "10"},
+  { q: "What is the smallest prime number?", a: "2"},
+  { q: "How many minutes are in 24 hours?", a: "1440"},
+  { q: "What is the freezing point of water in degree celsius?", a: "0"},
+  { q: "What is the largest organ in the human body?", a: "skin"},
+  { q: "The ancient pyramids of Giza are located in which country?", a: "Egypt"},
+  { q: "What is the smallest country in the world?", a: "Vatican City"},
+  { q: "How many teeth does an adult human have?", a: "32"},
+  { q: "How many chambers does a human heart have?", a: "4"},
+  { q: "Who is known as the father of genetics?", a: "Mendel"}
+  
 ];
 
 const ROAST_BANK = [
@@ -271,7 +290,26 @@ const ROAST_BANK = [
   "could drop their weapon in a turn-based RPG and still find a way to lose their turn.",
   "possesses the charisma and emotional depth of an unseasoned potato in a microwave.",
   "is the human equivalent of a 404 page not found error.",
-  "has a brain with 2 tabs open: one is frozen, and the other is playing elevator music."
+  "has a brain with 2 tabs open: one is frozen, and the other is playing elevator music.",
+  "has a face that would make onions cry.",
+  "I consider you my Sun. Now, please get 93 million miles away from here.",
+  "You are the human version of cramps.",
+  "Were you born this dumb, or did you acquire experience over the time?",
+  "is the reason why the middle finger was invented in the first place",
+  "You can’t imagine how much happiness you can bring…by leaving the server.",
+  "Somewhere, a tree is producing oxygen for you. I’m sorry for it.",
+  "A glowstick has a brighter future than you",
+  "Your birth certificate needs to be rewritten as a letter of apology.",
+  "If I throw a stick for you, will you leave?",
+  "needs a kiss on the neck from an alligator.",
+  "I will kick your ass so hard that you will fly to the farthest planet and it will also crash",
+  "is the reason I don’t want kids.",
+  "Your face could scare the shit out of a toilet.",
+  "Twinkle, twinkle, little star, I want to hit you with my car.",
+  "Roses are red, monsters are green, look in the mirror, you’ll see what I mean.",
+  "If I were a dog and you were a flower, I’d lift my leg up and give you a shower."
+  
+  
 ];
 
 const PICKUP_BANK = [
@@ -281,7 +319,25 @@ const PICKUP_BANK = [
   "My internet ping might be 200ms, but my heart registers you at 0ms.",
   "If crystals were smiles, you would own the wealthiest geode mine in the multiverse.",
   "Are you an astral anomaly? Because every time you enter chat, time completely dilates.",
-  "You must be an end-game drop, because people grind for weeks just to catch your attention."
+  "You must be an end-game drop, because people grind for weeks just to catch your attention.",
+  "I'd like to take you to the movies but they don't let you bring your own snacks in.",
+  "I'm lost. Can you give me directions to your heart?",
+  "Wanna be Minecraft without the craft?",
+  "You know, I'm actually terrible at flirting. How about you try to pick me up instead?",
+  "4+4=8 but you+me=fate.",
+  "What's your favorite drink? I'm asking so I know what to buy you when we go on our first date.",
+  "Do you have Instagram? My parents always told me to follow my dreams.",
+  "What is it like to be the most gorgeous person in this server?",
+  "They say nothing lasts forever. Want to be my nothing?",
+  "Are your parents bakers? Because you're a cutie pie.",
+  "I had a good pickup line ready to go, but you're so good-looking I'm literally speechless.",
+  "On a scale of 1 to 10, you're a 9…because I'm the 1 you need.",
+  "Want to go outside and get some fresh air with me? You just took my breath away.",
+  "Your lips look lonely. Would they like to meet mine?",
+  "I'm not currently an organ donor, but I'd love to give you my heart.",
+  "If you let me borrow a kiss, I promise I'll give it right back.",
+  "My mom told me not to talk to strangers online, but I'll make an exception for you.",
+  "Trust me, I'm not drunk I'm just intoxicated by you."
 ];
 
 // ==========================================

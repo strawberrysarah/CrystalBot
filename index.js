@@ -341,6 +341,51 @@ const PICKUP_BANK = [
 ];
 
 // ==========================================
+// SELF-ROLES REACTION MAPPING
+// ==========================================
+const REACTION_ROLES_MAP = {
+  // 1. Gender / Pronouns
+  '🌸': '1558480429273583678', // She/her
+  '🌿': '1558480593073868841', // He/him
+  '🌙': '1558480712695414874', // They/them
+  '✨': '1558480820874780722', // Any/all
+
+  // 2. Age Bracket
+  '🐣': '1558481003746697266', // 13-17
+  '🪷': '1558481095446495233', // 18-21
+  '☕': '1558481253370433536', // 21+
+
+  // 3. Region / Continent
+  '🌏': '1558481398069727362', // Asia
+  '🌍': '1558481498347413584', // Europe
+  '🌎': '1558481607093125200', // Americas
+  '🏝️': '1558482222242209904', // Other
+
+  // 4. Relationship Status
+  '💙': '1558482393395101897', // Single
+  '💖': '1558482471891247204', // Taken
+  '💍': '1558482562593067089', // Married
+  '🍿': '1558482718705188874', // Third Wheeler
+  '💌': '1558482810136694844', // Hopeless Romantic
+  '🥀': '1558482907755053286', // I Give Up
+
+  // 5. Aesthetic Colors
+  '🔮': '1558483084884574411', // Moonlight
+  '☁️': '1558483165293707344', // Daydream
+  '🩷': '1558483247237828681', // Rosewater
+  '💜': '1558483493644668998', // Ethereal
+  '🌌': '1558483592378581113', // Blue Hour
+  '🌷': '1558483731701047406', // Lover
+
+  // 6. Notifications
+  '🔔': '1558483922654863370', // Arise
+  '🎮': '1558484017710629075', // Gaming
+  '🎬': '1558484104843100190', // Movie
+  '⛩️': '1558484202184515734'  // Anime
+};
+
+
+// ==========================================
 // 3. MONGOOSE SCHEMAS & DATABASE ENGINE
 // ==========================================
 const plantDocSchema = new mongoose.Schema({
@@ -1161,50 +1206,61 @@ client.on('guildMemberRemove', async (member) => {
 });
 
 // ==========================================
-// 5. INTERACTIVE SELF-ROLES HANDLER
+// REACTION ROLE LISTENERS (WITH PERSISTENT PARTIALS)
 // ==========================================
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isStringSelectMenu()) return;
+client.on('messageReactionAdd', async (reaction, user) => {
+  if (user.bot) return;
 
-  const { customId, values, member } = interaction;
-  if (!customId.startsWith('roles_')) return;
-
-  await interaction.deferReply({ ephemeral: true });
-
-  const category = customId.replace('roles_', '');
-  const categoryRoles = SELF_ROLE_IDS[category];
-
-  if (!categoryRoles) {
-    return interaction.editReply({ content: '❌ Configuration error for this role category.' });
+  // Fetch partials if the reaction or message was created prior to bot launch
+  if (reaction.partial) {
+    try { await reaction.fetch(); } catch (err) { return; }
   }
+  if (reaction.message.partial) {
+    try { await reaction.message.fetch(); } catch (err) { return; }
+  }
+
+  const roleId = REACTION_ROLES_MAP[reaction.emoji.name];
+  if (!roleId) return;
+
+  const guild = reaction.message.guild;
+  if (!guild) return;
 
   try {
-    if (category === 'notifications') {
-      const allNotificationIds = Object.values(categoryRoles);
-      const rolesToAdd = values.map(val => categoryRoles[val]).filter(Boolean);
-      const rolesToRemove = allNotificationIds.filter(id => !rolesToAdd.includes(id));
-
-      await member.roles.remove(rolesToRemove).catch(() => {});
-      await member.roles.add(rolesToAdd).catch(() => {});
-
-      return interaction.editReply({ content: '🔔 Your notification preferences have been successfully updated!' });
-    } else {
-      const selectedKey = values[0];
-      const targetRoleId = categoryRoles[selectedKey];
-      const rolesToRemove = Object.values(categoryRoles).filter(id => id !== targetRoleId);
-
-      await member.roles.remove(rolesToRemove).catch(() => {});
-      if (targetRoleId) {
-        await member.roles.add(targetRoleId).catch(() => {});
-      }
-
-      return interaction.editReply({ content: `✨ Your **${category.toUpperCase()}** role has been updated to <@&${targetRoleId}>!` });
+    const member = await guild.members.fetch(user.id);
+    if (member) {
+      await member.roles.add(roleId);
     }
   } catch (err) {
-    console.error('Self-Role Assignment Error:', err);
-    return interaction.editReply({ content: '❌ Could not update your roles. Please ensure the bot role is positioned above these roles in server settings.' });
+    console.error(`Could not add role ${roleId} to${user.tag}:`, err.message);
   }
 });
+
+client.on('messageReactionRemove', async (reaction, user) => {
+  if (user.bot) return;
+
+  if (reaction.partial) {
+    try { await reaction.fetch(); } catch (err) { return; }
+  }
+  if (reaction.message.partial) {
+    try { await reaction.message.fetch(); } catch (err) { return; }
+  }
+
+  const roleId = REACTION_ROLES_MAP[reaction.emoji.name];
+  if (!roleId) return;
+
+  const guild = reaction.message.guild;
+  if (!guild) return;
+
+  try {
+    const member = await guild.members.fetch(user.id);
+    if (member) {
+      await member.roles.remove(roleId);
+    }
+  } catch (err) {
+    console.error(`Could not remove role ${roleId} from${user.tag}:`, err.message);
+  }
+});
+
 
 // ==========================================
 // 6. READY & STATUS
@@ -3123,127 +3179,133 @@ client.on('messageCreate', async message => {
     // MODULE: ADMIN COMMANDS
     // ==========================================
 
-    // SETUP SELF-ROLES (6 MODULAR EMBEDS)
+        // SETUP REACTION ROLES (ALL 6 EMBEDS WITH LIVE EMOJI REACTIONS)
     if (command === 'setup-roles') {
       if (!message.member.permissions.has(PermissionFlagsBits.Administrator) && !isVip) {
         return message.reply('❌ You need Administrator permissions to deploy self-roles.');
       }
 
-      // 1. Gender / Pronouns
-      const genderMenu = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('roles_gender')
-          .setPlaceholder('Select your Pronouns / Gender...')
-          .addOptions([
-            new StringSelectMenuOptionBuilder().setLabel('She / Her').setValue('she_her').setEmoji('🌸'),
-            new StringSelectMenuOptionBuilder().setLabel('He / Him').setValue('he_him').setEmoji('🌿'),
-            new StringSelectMenuOptionBuilder().setLabel('They / Them').setValue('they_them').setEmoji('🌙'),
-            new StringSelectMenuOptionBuilder().setLabel('Any / All').setValue('any_all').setEmoji('✨')
-          ])
-      );
-      const genderEmbed = new EmbedBuilder()
-        .setColor('#f6c6ea')
-        .setTitle('🌸 Pronouns & Gender')
-        .setDescription('Select your preferred pronouns below to update your profile role.');
-      await message.channel.send({ embeds: [genderEmbed], components: [genderMenu] });
+      const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-      // 2. Age Bracket
-      const ageMenu = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('roles_age')
-          .setPlaceholder('Select your Age Bracket...')
-          .addOptions([
-            new StringSelectMenuOptionBuilder().setLabel('13 – 17').setValue('13_17').setEmoji('🐣'),
-            new StringSelectMenuOptionBuilder().setLabel('18 – 21').setValue('18_21').setEmoji('🪷'),
-            new StringSelectMenuOptionBuilder().setLabel('21+').setValue('21_plus').setEmoji('☕')
-          ])
-      );
-      const ageEmbed = new EmbedBuilder()
-        .setColor('#caffbf')
-        .setTitle('🪷 Age Bracket')
-        .setDescription('Let the community know your age group.');
-      await message.channel.send({ embeds: [ageEmbed], components: [ageMenu] });
+      try {
+        // 1. Gender / Pronouns
+        const genderEmbed = new EmbedBuilder()
+          .setColor('#f6c6ea')
+          .setTitle('🌸 Pronouns & Gender')
+          .setDescription(
+            'React below to claim your pronouns:\n\n' +
+            '🌸 • <@&1558480429273583678> — `She / Her`\n' +
+            '🌿 • <@&1558480593073868841> — `He / Him`\n' +
+            '🌙 • <@&1558480712695414874> — `They / Them`\n' +
+            '✨ • <@&1558480820874780722> — `Any / All`'
+          );
+        const m1 = await message.channel.send({ embeds: [genderEmbed] });
+        for (const emoji of ['🌸', '🌿', '🌙', '✨']) {
+          await m1.react(emoji);
+          await wait(250);
+        }
+        await wait(600);
 
-      // 3. Region / Continent
-      const regionMenu = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('roles_region')
-          .setPlaceholder('Select your Region / Continent...')
-          .addOptions([
-            new StringSelectMenuOptionBuilder().setLabel('Asia').setValue('asia').setEmoji('🌏'),
-            new StringSelectMenuOptionBuilder().setLabel('Europe').setValue('europe').setEmoji('🌍'),
-            new StringSelectMenuOptionBuilder().setLabel('Americas').setValue('americas').setEmoji('🌎'),
-            new StringSelectMenuOptionBuilder().setLabel('Other').setValue('other').setEmoji('🏝️')
-          ])
-      );
-      const regionEmbed = new EmbedBuilder()
-        .setColor('#9bf6ff')
-        .setTitle('🌏 Region & Continent')
-        .setDescription('Choose where in the world you are logging in from.');
-      await message.channel.send({ embeds: [regionEmbed], components: [regionMenu] });
+        // 2. Age Bracket
+        const ageEmbed = new EmbedBuilder()
+          .setColor('#caffbf')
+          .setTitle('🪷 Age Bracket')
+          .setDescription(
+            'React below to claim your age group:\n\n' +
+            '🐣 • <@&1558481003746697266> — `13 – 17`\n' +
+            '🪷 • <@&1558481095446495233> — `18 – 21`\n' +
+            '☕ • <@&1558481253370433536> — `21+`'
+          );
+        const m2 = await message.channel.send({ embeds: [ageEmbed] });
+        for (const emoji of ['🐣', '🪷', '☕']) {
+          await m2.react(emoji);
+          await wait(250);
+        }
+        await wait(600);
 
-      // 4. Relationship Status
-      const relMenu = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('roles_relationship')
-          .setPlaceholder('Select your Relationship Status...')
-          .addOptions([
-            new StringSelectMenuOptionBuilder().setLabel('Single').setValue('single').setEmoji('💙'),
-            new StringSelectMenuOptionBuilder().setLabel('Taken').setValue('taken').setEmoji('💖'),
-            new StringSelectMenuOptionBuilder().setLabel('Married').setValue('married').setEmoji('💍'),
-            new StringSelectMenuOptionBuilder().setLabel('Third Wheeler').setValue('third_wheeler').setEmoji('🍿'),
-            new StringSelectMenuOptionBuilder().setLabel('Hopeless Romantic').setValue('hopeless_romantic').setEmoji('💌'),
-            new StringSelectMenuOptionBuilder().setLabel('I Give Up').setValue('i_give_up').setEmoji('🥀')
-          ])
-      );
-      const relEmbed = new EmbedBuilder()
-        .setColor('#ffa6c9')
-        .setTitle('💌 Relationship Status')
-        .setDescription('Pick your current status to display on your server profile.');
-      await message.channel.send({ embeds: [relEmbed], components: [relMenu] });
+        // 3. Region / Continent
+        const regionEmbed = new EmbedBuilder()
+          .setColor('#9bf6ff')
+          .setTitle('🌏 Region & Continent')
+          .setDescription(
+            'React below to show where you are logging in from:\n\n' +
+            '🌏 • <@&1558481398069727362> — `Asia`\n' +
+            '🌍 • <@&1558481498347413584> — `Europe`\n' +
+            '🌎 • <@&1558481607093125200> — `Americas`\n' +
+            '🏝️ • <@&1558482222242209904> — `Other`'
+          );
+        const m3 = await message.channel.send({ embeds: [regionEmbed] });
+        for (const emoji of ['🌏', '🌍', '🌎', '🏝️']) {
+          await m3.react(emoji);
+          await wait(250);
+        }
+        await wait(600);
 
-      // 5. Aesthetic Colors
-      const aestheticMenu = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('roles_aesthetic')
-          .setPlaceholder('Select your Aesthetic Name Color...')
-          .addOptions([
-            new StringSelectMenuOptionBuilder().setLabel('Moonlight').setValue('moonlight').setDescription('#C8A2C8 Soft Lavender').setEmoji('🌙'),
-            new StringSelectMenuOptionBuilder().setLabel('Daydream').setValue('daydream').setDescription('#9BD3EE Sky Blue').setEmoji('☁️'),
-            new StringSelectMenuOptionBuilder().setLabel('Rosewater').setValue('rosewater').setDescription('#F4A6B8 Pastel Pink').setEmoji('🩷'),
-            new StringSelectMenuOptionBuilder().setLabel('Ethereal').setValue('ethereal').setDescription('#7368B2 Royal Violet').setEmoji('✧'),
-            new StringSelectMenuOptionBuilder().setLabel('Blue Hour').setValue('blue_hour').setDescription('#4A6572 Twilight Slate').setEmoji('🌌'),
-            new StringSelectMenuOptionBuilder().setLabel('Lover').setValue('lover').setDescription('#FF8FAB Sweet Rose').setEmoji('🌷')
-          ])
-      );
-      const aestheticEmbed = new EmbedBuilder()
-        .setColor('#c8a2c8')
-        .setTitle('🌙 Aesthetic Name Palette')
-        .setDescription('Choose the color palette for your name in chat.');
-      await message.channel.send({ embeds: [aestheticEmbed], components: [aestheticMenu] });
+        // 4. Relationship Status
+        const relEmbed = new EmbedBuilder()
+          .setColor('#ffa6c9')
+          .setTitle('💌 Relationship Status')
+          .setDescription(
+            'React below to display your status on your profile:\n\n' +
+            '💙 • <@&1558482393395101897> — `Single`\n' +
+            '💖 • <@&1558482471891247204> — `Taken`\n' +
+            '💍 • <@&1558482562593067089> — `Married`\n' +
+            '🍿 • <@&1558482718705188874> — `Third Wheeler`\n' +
+            '💌 • <@&1558482810136694844> — `Hopeless Romantic`\n' +
+            '🥀 • <@&1558482907755053286> — `I Give Up`'
+          );
+        const m4 = await message.channel.send({ embeds: [relEmbed] });
+        for (const emoji of ['💙', '💖', '💍', '🍿', '💌', '🥀']) {
+          await m4.react(emoji);
+          await wait(250);
+        }
+        await wait(600);
 
-      // 6. Notifications
-      const notifMenu = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('roles_notifications')
-          .setPlaceholder('Select your Ping Notifications (Multi-Select)...')
-          .setMinValues(0)
-          .setMaxValues(4)
-          .addOptions([
-            new StringSelectMenuOptionBuilder().setLabel('Arise').setValue('arise').setEmoji('🔔'),
-            new StringSelectMenuOptionBuilder().setLabel('Gaming').setValue('gaming').setEmoji('🎮'),
-            new StringSelectMenuOptionBuilder().setLabel('Movie').setValue('movie').setEmoji('🍿'),
-            new StringSelectMenuOptionBuilder().setLabel('Anime').setValue('anime').setEmoji('⛩️')
-          ])
-      );
-      const notifEmbed = new EmbedBuilder()
-        .setColor('#f59e0b')
-        .setTitle('🔔 Server Notifications')
-        .setDescription('Opt in or out of specific event announcements whenever you like.');
-      await message.channel.send({ embeds: [notifEmbed], components: [notifMenu] });
+        // 5. Aesthetic Palette
+        const aestheticEmbed = new EmbedBuilder()
+          .setColor('#c8a2c8')
+          .setTitle('🌙 Aesthetic Name Palette')
+          .setDescription(
+            'React below to change your name color in chat:\n\n' +
+            '🔮 • <@&1558483084884574411> — `Moonlight`\n' +
+            '☁️ • <@&1558483165293707344> — `Daydream`\n' +
+            '🩷 • <@&1558483247237828681> — `Rosewater`\n' +
+            '💜 • <@&1558483493644668998> — `Ethereal`\n' +
+            '🌌 • <@&1558483592378581113> — `Blue Hour`\n' +
+            '🌷 • <@&1558483731701047406> — `Lover`'
+          );
+        const m5 = await message.channel.send({ embeds: [aestheticEmbed] });
+        for (const emoji of ['🔮', '☁️', '🩷', '💜', '🌌', '🌷']) {
+          await m5.react(emoji);
+          await wait(250);
+        }
+        await wait(600);
 
-      return message.delete().catch(() => {});
+        // 6. Notifications
+        const notifEmbed = new EmbedBuilder()
+          .setColor('#f59e0b')
+          .setTitle('🔔 Server Notifications')
+          .setDescription(
+            'React below to opt-in or out of specific event pings:\n\n' +
+            '🔔 • <@&1558483922654863370> — `Arise`\n' +
+            '🎮 • <@&1558484017710629075> — `Gaming`\n' +
+            '🎬 • <@&1558484104843100190> — `Movie`\n' +
+            '⛩️ • <@&1558484202184515734> — `Anime`'
+          );
+        const m6 = await message.channel.send({ embeds: [notifEmbed] });
+        for (const emoji of ['🔔', '🎮', '🎬', '⛩️']) {
+          await m6.react(emoji);
+          await wait(250);
+        }
+
+        await message.delete().catch(() => {});
+      } catch (err) {
+        console.error('Reaction Role Deployment Error:', err);
+        message.channel.send(`⚠️ Error deploying reaction roles: \`${err.message}\``);
+      }
+      return;
     }
+
 
     // ADMIN POLL (cry!poll)
     if (command === 'poll') {

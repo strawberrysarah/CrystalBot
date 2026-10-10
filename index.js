@@ -720,6 +720,300 @@ async function renderGauge(user, pct, label, colors) {
 }
 
 // ==========================================
+// CANVAS CARD ENGINES: RANK/LB, PROFILE, PLANTS
+// ==========================================
+
+// 1. TOP 10 CELESTIAL LEADERBOARD & RANK CARD
+async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMember) {
+  const w = 1200;
+  const h = 760;
+  const canvas = createCanvas(w, h);
+  const ctx = canvas.getContext('2d');
+
+  // Background gradient
+  const bg = ctx.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, '#0c0714');
+  bg.addColorStop(0.5, '#160d26');
+  bg.addColorStop(1, '#07040d');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  // Nebula blooms
+  const bloom = ctx.createRadialGradient(600, 200, 50, 600, 200, 500);
+  bloom.addColorStop(0, 'rgba(114, 9, 183, 0.25)');
+  bloom.addColorStop(1, 'transparent');
+  ctx.fillStyle = bloom;
+  ctx.fillRect(0, 0, w, h);
+
+  // Outer border
+  ctx.strokeStyle = '#c8a2c8';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(20, 20, w - 40, h - 40);
+
+  // Header Title
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 32px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('✧ CELESTIAL SOUL LEADERBOARD • TOP 10 ✧', w / 2, 65);
+
+  // Render Top 10 Entries (Left Column: 1-5, Right Column: 6-10)
+  for (let idx = 0; idx < 10; idx++) {
+    const entry = topUsers[idx];
+    const col = idx < 5 ? 0 : 1;
+    const row = idx % 5;
+    const x = col === 0 ? 55 : 625;
+    const y = 95 + (row * 105);
+
+    // Entry box
+    ctx.fillStyle = idx === 0 ? 'rgba(255, 215, 0, 0.08)' : 'rgba(255, 255, 255, 0.04)';
+    drawRoundedRect(ctx, x, y, 520, 90, 10);
+    ctx.fill();
+
+    ctx.strokeStyle = idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'rgba(255, 255, 255, 0.12)';
+    ctx.lineWidth = 1.5;
+    drawRoundedRect(ctx, x, y, 520, 90, 10);
+    ctx.stroke();
+
+    if (entry) {
+      // Rank Badge
+      ctx.fillStyle = idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : '#d8b4e2';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`#${idx + 1}`, x + 18, y + 52);
+
+      // Avatar
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x + 95, y + 45, 28, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      try {
+        const ava = await loadImage(entry.member.user.displayAvatarURL({ extension: 'png', size: 128 }));
+        ctx.drawImage(ava, x + 67, y + 17, 56, 56);
+      } catch {
+        ctx.fillStyle = '#2d0c45';
+        ctx.fillRect(x + 67, y + 17, 56, 56);
+      }
+      ctx.restore();
+
+      // Username
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px sans-serif';
+      const name = entry.member.user.username.length > 13 
+        ? entry.member.user.username.substring(0, 11) + '...' 
+        : entry.member.user.username;
+      ctx.fillText(name, x + 140, y + 42);
+
+      // Level & Crystals
+      ctx.fillStyle = '#b8a9c9';
+      ctx.font = '15px sans-serif';
+      ctx.fillText(`Lvl ${entry.doc.level || 1} • ${(entry.doc.balance || 0).toLocaleString()} Crystals`, x + 140, y + 68);
+    } else {
+      ctx.fillStyle = '#554d66';
+      ctx.font = 'italic 18px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Slot #${idx + 1} Empty`, x + 25, y + 52);
+    }
+  }
+
+  // Author Personal Footer Strip
+  ctx.fillStyle = '#1e1133';
+  drawRoundedRect(ctx, 55, 645, 1090, 75, 10);
+  ctx.fill();
+  ctx.strokeStyle = '#f72585';
+  ctx.lineWidth = 2;
+  drawRoundedRect(ctx, 55, 645, 1090, 75, 10);
+  ctx.stroke();
+
+  // Author Avatar
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(95, 682, 26, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  try {
+    const authorAva = await loadImage(authorMember.user.displayAvatarURL({ extension: 'png', size: 128 }));
+    ctx.drawImage(authorAva, 69, 656, 52, 52);
+  } catch {}
+  ctx.restore();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 20px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(authorMember.user.username, 140, 678);
+
+  ctx.fillStyle = '#f72585';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillText(`YOUR RANK: #${authorRank}`, 140, 703);
+
+  ctx.fillStyle = '#e9d5ff';
+  ctx.textAlign = 'right';
+  ctx.font = '18px sans-serif';
+  ctx.fillText(`Level ${authorUser.level || 1}  •  ${(authorUser.balance || 0).toLocaleString()} Crystals`, 1110, 688);
+
+  return canvas.toBuffer('image/png');
+}
+
+// 2. CELESTIAL PROFILE CODEX CARD
+async function renderProfileCard(userDoc, member, rankStr, isVip) {
+  const w = 900;
+  const h = 480;
+  const canvas = createCanvas(w, h);
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  const bg = ctx.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, '#0f0a1c');
+  bg.addColorStop(0.5, '#1b1030');
+  bg.addColorStop(1, '#090512');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  // Border
+  ctx.strokeStyle = '#c8a2c8';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(15, 15, w - 30, h - 30);
+
+  // Avatar
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(140, 140, 70, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  try {
+    const ava = await loadImage(member.user.displayAvatarURL({ extension: 'png', size: 256 }));
+    ctx.drawImage(ava, 70, 70, 140, 140);
+  } catch {}
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(140, 140, 73, 0, Math.PI * 2);
+  ctx.strokeStyle = '#f72585';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Name & Badges
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 32px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(member.user.username, 240, 110);
+
+  ctx.fillStyle = '#d8b4e2';
+  ctx.font = '16px sans-serif';
+  ctx.fillText(isVip ? '👑 Cosmic VIP • Sanctuary Patron' : '💠 Mansion Traveler', 240, 140);
+
+  ctx.fillStyle = '#b8a9c9';
+  ctx.font = '16px sans-serif';
+  ctx.fillText(`Title: ${userDoc.equippedRole || 'Default Prism'}  •  Global Rank: ${rankStr}`, 240, 168);
+
+  // Stats Grid (Level, Wallet, Bank, Spouse)
+  const stats = [
+    { label: 'ATTUNEMENT LEVEL', val: `Level ${userDoc.level || 1} (${userDoc.exp || 0} XP)` },
+    { label: 'LIQUID CRYSTALS', val: `${(userDoc.balance || 0).toLocaleString()} Crystals` },
+    { label: 'BANK VAULT', val: `${(userDoc.bank || 0).toLocaleString()} Crystals` },
+    { label: 'ROMANTIC BOND', val: userDoc.spouseId ? `Married` : userDoc.datingPartnerId ? `Dating` : 'Single & Radiant' }
+  ];
+
+  stats.forEach((s, idx) => {
+    const col = idx % 2;
+    const row = Math.floor(idx / 2);
+    const x = 50 + col * 410;
+    const y = 240 + row * 100;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+    drawRoundedRect(ctx, x, y, 390, 80, 8);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.lineWidth = 1;
+    drawRoundedRect(ctx, x, y, 390, 80, 8);
+    ctx.stroke();
+
+    ctx.fillStyle = '#f72585';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText(s.label, x + 20, y + 30);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(s.val, x + 20, y + 58);
+  });
+
+  return canvas.toBuffer('image/png');
+}
+
+// 3. BOTANICAL NURSERY PLOT CARD
+async function renderPlantsCard(userDoc, username) {
+  const w = 800;
+  const h = 420;
+  const canvas = createCanvas(w, h);
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  const bg = ctx.createLinearGradient(0, 0, w, h);
+  bg.addColorStop(0, '#0a1410');
+  bg.addColorStop(0.5, '#10241c');
+  bg.addColorStop(1, '#060d0a');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = '#2ec4b6';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(15, 15, w - 30, h - 30);
+
+  // Title
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`✧ BOTANICAL SANCTUARY: ${username.toUpperCase()} ✧`, w / 2, 60);
+
+  if (!userDoc.activePlant) {
+    ctx.fillStyle = '#b8a9c9';
+    ctx.font = 'italic 20px sans-serif';
+    ctx.fillText('Your plot is currently empty soil.', w / 2, 210);
+    ctx.fillText('Sow a seed anytime using cry!sow <seed_id>', w / 2, 245);
+  } else {
+    const stage = userDoc.activePlant.stage || 1;
+    const pName = userDoc.activePlant.plantName;
+
+    ctx.fillStyle = '#2ec4b6';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(`🌱 Active Plant: ${pName}`, w / 2, 120);
+
+    // Progress Bar Track
+    const barX = 150, barY = 160, barW = 500, barH = 24;
+    ctx.fillStyle = '#1e382d';
+    drawRoundedRect(ctx, barX, barY, barW, barH, 12);
+    ctx.fill();
+
+    // Progress Bar Fill
+    const fillW = Math.max(24, (barW * stage) / 5);
+    ctx.fillStyle = '#2ec4b6';
+    drawRoundedRect(ctx, barX, barY, fillW, barH, 12);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(`Stage ${stage} / 5`, w / 2, 215);
+
+    // Info Pills
+    const lastW = userDoc.activePlant.lastWatered ? new Date(userDoc.activePlant.lastWatered).toLocaleDateString() : 'Never';
+    const fert = userDoc.activePlant.fertilised ? 'Yes (Maxed)' : 'No (Use cry!fertilise)';
+
+    ctx.fillStyle = '#b8a9c9';
+    ctx.font = '16px sans-serif';
+    ctx.fillText(`💧 Last Watered: ${lastW}   •   🧪 Fertilised: ${fert}`, w / 2, 260);
+
+    // Historical Vault Tally
+    const harvestCount = userDoc.harvestedPlants ? userDoc.harvestedPlants.length : 0;
+    ctx.fillStyle = '#ffd166';
+    ctx.font = '16px sans-serif';
+    ctx.fillText(`🏆 Historical Blooms Harvested: ${harvestCount}`, w / 2, 330);
+  }
+
+  return canvas.toBuffer('image/png');
+}
+
+// ==========================================
 // 4. WELCOME & GOODBYE LISTENERS
 // ==========================================
 client.on('guildMemberAdd', async (member) => {
@@ -883,7 +1177,7 @@ client.on('messageCreate', async message => {
 
   // Easter Egg Triggers
   if (message.content.toLowerCase().includes('sarah')) {
-    return message.channel.send("*🥹 My mom loves me bish.*");
+    return message.channel.send("*🥹 Ikrr Sarah is so peak, you are peak too twin...*");
   }
 
   if (message.content.toLowerCase().trim() === 'cry!cry') {
@@ -1099,62 +1393,53 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // PROFILE CODEX (cry!profile, cry!p, cry!me)
+    // ==========================================
+    // PROFILE (CANVAS GRAPHIC CARD)
+    // ==========================================
     if (command === 'profile' || command === 'p' || command === 'me') {
       const cd = checkCooldown(`prof_${message.author.id}`, 60000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Profile synchronization resting. Wait **${cd}s**.`);
 
-      const target = message.mentions.users.first() || message.author;
-      const user = await getUser(target.id);
-      const isTargetVip = target.id === VIP_USER_ID;
+      const targetMember = message.mentions.members.first() || message.member;
+      const userDoc = await getUser(targetMember.id);
+      const isTargetVip = targetMember.id === VIP_USER_ID;
 
       const allSorted = await User.find({}).sort({ balance: -1 });
-      const rankIdx = allSorted.findIndex(u => u.userId === target.id);
+      const rankIdx = allSorted.findIndex(u => u.userId === targetMember.id);
       const rankStr = rankIdx !== -1 ? `#${rankIdx + 1}` : 'Unranked';
 
-      const level = user.level || 1;
-      const exp = user.exp || 0;
-      const needed = getRequiredXp(level);
-      const filled = Math.min(8, Math.floor((exp / Math.max(1, needed)) * 8));
-      const bar = `⬢`.repeat(filled) + `⬡`.repeat(8 - filled);
+      const cardBuffer = await renderProfileCard(userDoc, targetMember, rankStr, isTargetVip);
+      const attachment = new AttachmentBuilder(cardBuffer, { name: 'profile_card.png' });
 
-      const badges = isTargetVip ? '👑 **Cosmic VIP** • 💎 **High Caliber** • 🌸 **Sanctuary Patron**' : '💠 **Mansion Traveler**';
-      const itemsCount = isTargetVip ? Object.keys(MARKET_ITEMS).length : Array.from(user.inventory.values()).reduce((a, b) => a + b, 0);
-
-      const embed = new EmbedBuilder()
-        .setAuthor({ name: `✧ CRYSTAL ARCHIVES: ${target.username} ✧`, iconURL: target.displayAvatarURL({ dynamic: true }) })
-        .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 256 }))
-        .setColor('#2d0c45')
-        .addFields(
-          { name: '🌌 Attunement & Level', value: `**Level ${level}** • \`[ ${bar} ]\`\n*EXP: ${exp} / ${needed}*`, inline: false },
-          { name: '💰 Vault Ledger', value: `**Balance:** ${user.balance.toLocaleString()} ${cryCoin}\n**Rank Standing:** \`${rankStr}\``, inline: true },
-          { name: '🔮 Wardrobe & Relics', value: `**Equipped:** ${user.equippedRole}\n**Relics Owned:** \`${itemsCount} items\``, inline: true },
-          { name: '💍 Romantic Bond', value: user.spouseId ? `Married to <@${user.spouseId}>` : user.datingPartnerId ? `Dating <@${user.datingPartnerId}>` : 'Single & Radiant', inline: false },
-          { name: '✨ Astral Badges', value: badges, inline: false }
-        )
-        .setFooter({ text: `Requested by ${message.author.username} • CrystalBot OS`, iconURL: message.author.displayAvatarURL({ dynamic: true }) })
-        .setTimestamp();
-
-      return message.reply({ embeds: [embed] });
+      return message.reply({ files: [attachment] });
     }
 
-    // RANK (cry!rank)
-    if (command === 'rank') {
-      const cd = checkCooldown(`rank_${message.author.id}`, 60000);
+    // ==========================================
+    // RANK & LB (TOP 10 CANVAS CARD)
+    // ==========================================
+    if (command === 'rank' || command === 'lb' || command === 'leaderboard') {
+      const cd = checkCooldown(`lb_${message.author.id}`, 60000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Wait **${cd}s**.`);
 
-      const target = message.mentions.users.first() || message.author;
-      const user = await getUser(target.id);
-      const allSorted = await User.find({}).sort({ balance: -1 });
-      const idx = allSorted.findIndex(u => u.userId === target.id);
+      const allUsers = await User.find({}).sort({ balance: -1 }).limit(100);
+      const top10List = [];
 
-      const rankEmbed = new EmbedBuilder()
-        .setTitle('✧ ASTRAL LEADERBOARD RANK ✧')
-        .setColor('#7209b7')
-        .setDescription(`**Member:** <@${target.id}>\n**Global Standing:** \`#${idx !== -1 ? idx + 1 : 'Unranked'}\`\n**Balance:** **${user.balance.toLocaleString()}** ${cryCoin}\n**Attunement:** **Level ${user.level}**`)
-        .setThumbnail(target.displayAvatarURL({ dynamic: true }));
+      for (const doc of allUsers) {
+        const member = message.guild.members.cache.get(doc.userId);
+        if (member) {
+          top10List.push({ doc, member });
+        }
+        if (top10List.length >= 10) break;
+      }
 
-      return message.reply({ embeds: [rankEmbed] });
+      const authorDoc = await getUser(message.author.id);
+      const authorRankIdx = allUsers.findIndex(u => u.userId === message.author.id);
+      const authorRank = authorRankIdx !== -1 ? authorRankIdx + 1 : 'Unranked';
+
+      const lbBuffer = await renderLeaderboardCard(top10List, authorDoc, authorRank, message.member);
+      const attachment = new AttachmentBuilder(lbBuffer, { name: 'leaderboard.png' });
+
+      return message.reply({ files: [attachment] });
     }
 
     // ==========================================
@@ -1260,36 +1545,7 @@ client.on('messageCreate', async message => {
 
       return message.reply(`✨ Transferred **${amt.toLocaleString()} ${cryCoin}** to <@${target.id}>!`);
     }
-
-    // LEADERBOARD (cry!lb, cry!leaderboard)
-    if (command === 'lb' || command === 'leaderboard') {
-      const cd = checkCooldown(`lb_${message.author.id}`, 60000);
-      if (cd > 0 && !isVip) return message.reply(`⏳ Wait **${cd}s**.`);
-
-      const allUsers = await User.find({}).sort({ balance: -1 }).limit(100);
-      const activeMembers = [];
-
-      for (const doc of allUsers) {
-        if (message.guild.members.cache.has(doc.userId)) {
-          activeMembers.push(doc);
-        }
-        if (activeMembers.length >= 10) break;
-      }
-
-      const rows = activeMembers.map((doc, idx) => {
-        const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `\`#${idx + 1}\``;
-        return `${medal} <@${doc.userId}> — **${doc.balance.toLocaleString()}** ${cryCoin} *(Lvl ${doc.level || 1})*`;
-      }).join('\n') || "*No active server members found on ledger.*";
-
-      const lbEmbed = new EmbedBuilder()
-        .setTitle('✧ CRYSTAL SOUL LEDGER — TOP 10 ✧')
-        .setColor('#2d0c45')
-        .setDescription(rows)
-        .setFooter({ text: `${message.guild.name} • Active Cohort` });
-
-      return message.reply({ embeds: [lbEmbed] });
-    }
-
+    
     // ==========================================
     // MODULE: MARKET & WARDROBE
     // ==========================================
@@ -1509,41 +1765,62 @@ client.on('messageCreate', async message => {
       return message.reply(`✨ Successfully unlocked and equipped the **${roleItem.name}** title!`);
     }
 
-    // EQUIP ROLE (WITH DISCORD ROLE SYNC)
+    // ==========================================
+    // EQUIP ROLE (FIXED CASE MATCHING & ROLE SYNC)
+    // ==========================================
     if (command === 'equip') {
-      const rId = (args[0] || '').toLowerCase();
-      const roleItem = ROLE_CATALOG.find(r => r.id === rId || r.name.toLowerCase() === args.join(' ').toLowerCase());
+      const query = args.join(' ').toLowerCase().trim();
+      if (!query) return message.reply("⚠️ Specify a valid role: `cry!equip <id or name>`");
 
-      if (!roleItem) return message.reply("⚠️ Specify a valid role ID: `cry!equip <id>`");
+      // Match by ID or Name
+      const roleItem = ROLE_CATALOG.find(r => r.id.toLowerCase() === query || r.name.toLowerCase() === query);
+      if (!roleItem) return message.reply("⚠️ Role not found in catalogue! Check `cry!roleshop`.");
 
       const user = await getUser(message.author.id);
-      if (!user.rolesOwned.includes(roleItem.name) && !isVip) {
+      const ownsRole = user.rolesOwned.some(r => r.toLowerCase() === roleItem.name.toLowerCase()) || isVip;
+
+      if (!ownsRole) {
         return message.reply(`❌ You do not own the **${roleItem.name}** title! Buy it in \`cry!roleshop\`.`);
       }
 
+      // Strip any other existing vanity roles from member
+      try {
+        const allVanityIds = ROLE_CATALOG.map(r => r.roleId);
+        await message.member.roles.remove(allVanityIds);
+      } catch {}
+
       user.equippedRole = roleItem.name;
 
-      let roleMsg = '';
+      // Assign the matching guild role
+      let roleNotice = '';
       try {
-        const guildRole = message.guild.roles.cache.get(roleItem.roleId);
-        if (guildRole) {
-          await message.member.roles.add(guildRole);
-          roleMsg = ` and assigned you the **${guildRole.name}** server role!`;
+        const targetGuildRole = message.guild.roles.cache.get(roleItem.roleId);
+        if (targetGuildRole) {
+          await message.member.roles.add(targetGuildRole);
+          roleNotice = ` and assigned you the **${targetGuildRole.name}** server role!`;
         }
       } catch {
-        roleMsg = ' (Could not assign role; ensure bot role is higher in server settings).';
+        roleNotice = ' (Title updated in profile; ensure bot role is higher to assign server role).';
       }
 
       await user.save();
-      return message.reply(`✨ Equipped **${roleItem.name}** as your active profile title${roleMsg}`);
+      return message.reply(`✨ Equipped **${roleItem.name}** as your active profile title${roleNotice}`);
     }
 
-    // UNEQUIP ROLE
+    // ==========================================
+    // UNEQUIP ROLE (STRIPS GUILD ROLE PROPERLY)
+    // ==========================================
     if (command === 'unequip') {
       const user = await getUser(message.author.id);
       user.equippedRole = 'Default Prism';
+
+      try {
+        const allVanityIds = ROLE_CATALOG.map(r => r.roleId);
+        await message.member.roles.remove(allVanityIds);
+      } catch {}
+
       await user.save();
-      return message.reply("✨ Unequipped your active title! Reset to Default Prism.");
+      return message.reply("✨ Unequipped your active title and removed server vanity roles! Reset to Default Prism.");
     }
 
     // MY ROLES
@@ -1712,40 +1989,15 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // PLANTS PROGRESS
+    // ==========================================
+    // PLANTS (CANVAS GREENHOUSE CARD)
+    // ==========================================
     if (command === 'plants') {
       const user = await getUser(message.author.id);
-      let desc = '';
+      const plantsBuffer = await renderPlantsCard(user, message.author.username);
+      const attachment = new AttachmentBuilder(plantsBuffer, { name: 'botanical_sanctuary.png' });
 
-      if (!user.activePlant) {
-        desc = "**Active Plot:** 🕳️ *Empty Soil* (Sow a seed with `cry!sow <seed_id>`)\n\n";
-      } else {
-        const stage = user.activePlant.stage;
-        const bar = `⬢`.repeat(stage) + `⬡`.repeat(5 - stage);
-        desc = `🌱 **Active Plant:** **${user.activePlant.plantName}**\n` +
-               `**Growth Stage:** \`[ ${bar} ]\` **${stage}/5**\n` +
-               `💧 **Last Watered:** ${user.activePlant.lastWatered ? new Date(user.activePlant.lastWatered).toLocaleDateString() : 'Never'}\n` +
-               `🧪 **Fertilised:** ${user.activePlant.fertilised ? 'Yes (Maxed)' : 'No (Use cry!fertilise)'}\n\n`;
-      }
-
-      desc += "**🏆 Historical Harvest Vault:**\n";
-      if (!user.harvestedPlants || user.harvestedPlants.length === 0) {
-        desc += "*No plants harvested yet.*";
-      } else {
-        const counts = {};
-        user.harvestedPlants.forEach(p => counts[p] = (counts[p] || 0) + 1);
-        for (const [p, c] of Object.entries(counts)) {
-          desc += `• **${p}** — ${c}x\n`;
-        }
-      }
-
-      const pEmbed = new EmbedBuilder()
-        .setTitle(`✧ BOTANICAL SANCTUARY: ${message.author.username} ✧`)
-        .setColor('#2ec4b6')
-        .setDescription(desc)
-        .setFooter({ text: "Water daily with cry!water • Harvest at Stage 5 with cry!harvest" });
-
-      return message.reply({ embeds: [pEmbed] });
+      return message.reply({ files: [attachment] });
     }
 
     // ==========================================

@@ -37,6 +37,8 @@ const VIP_USER_ID = '1471141307400454245';
 
 const WELCOME_CHANNEL_ID = '1531265642928541786';
 const GOODBYE_CHANNEL_ID = '1558487271630708756';
+const STARBOARD_CHANNEL_ID = '1558487271630708756'; 
+
 
 const SELF_ROLE_IDS = {
   gender: {
@@ -117,6 +119,11 @@ function formatDuration(seconds) {
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
 }
+
+// Memory stores for Snipe and AFK
+if (!global.snipes) global.snipes = new Map(); // channelId -> { content, author, timestamp, attachments }
+if (!global.afkUsers) global.afkUsers = new Map(); // userId -> { reason, timestamp }
+
 
 // Canvas rounded rect fallback
 function drawRoundedRect(ctx, x, y, width, height, radius) {
@@ -404,6 +411,20 @@ const userProfileSchema = new mongoose.Schema({
   bank: { type: Number, default: 0 },
   level: { type: Number, default: 1 },
   exp: { type: Number, default: 0 },
+
+    // Moderation Warnings
+  warnings: [{
+    moderatorId: String,
+    reason: String,
+    timestamp: { type: Date, default: Date.now }
+  }],
+
+  // Birthday Ledger
+  birthday: {
+    day: { type: Number, default: null },
+    month: { type: Number, default: null }
+  },
+  lastBirthdayYear: { type: Number, default: null },
   
   // Economy Attempt Trackers
   workAttempts: { type: Number, default: 0 },
@@ -1261,6 +1282,46 @@ client.on('messageReactionRemove', async (reaction, user) => {
   }
 });
 
+// ==========================================
+// CELESTIAL STARBOARD / HALL OF FAME (5 REACTION TRIGGER)
+// ==========================================
+client.on('messageReactionAdd', async (reaction, user) => {
+  if (user.bot) return;
+
+  if (reaction.partial) {
+    try { await reaction.fetch(); } catch { return; }
+  }
+  if (reaction.message.partial) {
+    try { await reaction.message.fetch(); } catch { return; }
+  }
+
+  // Count target reactions: Star, Gem, or custom crystal emoji
+  const validTriggers = ['⭐', '🌟', '😭', 'emoji_51'];
+  const isMatch = validTriggers.includes(reaction.emoji.name) || reaction.emoji.id === '1531598791063638036';
+  if (!isMatch) return;
+
+  if (reaction.count === 5) {
+    const starChannel = reaction.message.guild.channels.cache.get(STARBOARD_CHANNEL_ID);
+    if (!starChannel || starChannel.id === reaction.message.channel.id) return;
+
+    const starEmbed = new EmbedBuilder()
+      .setColor('#ffd700')
+      .setAuthor({ name: reaction.message.author.tag, iconURL: reaction.message.author.displayAvatarURL({ dynamic: true }) })
+      .setDescription(reaction.message.content || '*[Image / Embed Payload]*')
+      .addFields({ name: 'Source', value: `[Jump to Starlight Message](${reaction.message.url})`, inline: true })
+      .setFooter({ text: `Message ID: ${reaction.message.id} • 5x${reaction.emoji.name}` })
+      .setTimestamp(reaction.message.createdAt);
+
+    if (reaction.message.attachments.size > 0) {
+      starEmbed.setImage(reaction.message.attachments.first().url);
+    }
+
+    await starChannel.send({
+      content: `✧ **Celestial Immortalization** in <#${reaction.message.channel.id}>! ✧`,
+      embeds: [starEmbed]
+    }).catch(() => {});
+  }
+});
 
 // ==========================================
 // 6. READY & STATUS
@@ -1270,11 +1331,80 @@ client.once('ready', () => {
   console.log(`💎 All engines loaded: Market, Wardrobe, Games, Economy, Love, Nursery`);
 });
 
+  // Daily Birthday Checker (Runs every 30 minutes)
+  setInterval(async () => {
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentYear = now.getFullYear();
+
+    const birthdayUsers = await User.find({
+      'birthday.day': currentDay,
+      'birthday.month': currentMonth,
+      $or: [{ lastBirthdayYear: { $ne: currentYear } }, { lastBirthdayYear: null }]
+    });
+
+    for (const doc of birthdayUsers) {
+      doc.balance += 500;
+      doc.lastBirthdayYear = currentYear;
+      await doc.save();
+
+      // Find first valid guild to announce
+      for (const guild of client.guilds.cache.values()) {
+        const member = guild.members.cache.get(doc.userId);
+        if (member) {
+          const defaultChannel = guild.systemChannel || guild.channels.cache.find(c => c.isTextBased() && c.permissionsFor(guild.members.me).has('SendMessages'));
+          if (defaultChannel) {
+            defaultChannel.send(`🎂 **CELESTIAL BIRTHDAY BLESSING!** Happy Birthday <@${doc.userId}>! ✨ May your year shine brilliant across the cosmos. (+500 ${cryCoin} deposited!)`);
+          }
+          break;
+        }
+      }
+    }
+  }, 1800000);
+
+// ==========================================
+// SNIPE LISTENER (Captures last deleted message)
+// ==========================================
+client.on('messageDelete', async (message) => {
+  if (!message || message.partial || message.author?.bot || !message.guild) return;
+
+  global.snipes.set(message.channel.id, {
+    content: message.content || '',
+    author: message.author,
+    member: message.member,
+    timestamp: Date.now(),
+    attachments: message.attachments.map(a => a.url)
+  });
+});
+
 // ==========================================
 // 7. MESSAGE DISPATCHER & COMMAND ROUTING
 // ==========================================
 client.on('messageCreate', async message => {
   if (message.author.bot || !message.guild) return;
+
+  // ------------------------------------------
+  // AFK AUTO-RESPONSE & CLEAR ENGINE
+  // ------------------------------------------
+  // 1. Remove AFK if author speaks
+  if (global.afkUsers.has(message.author.id)) {
+    const afkData = global.afkUsers.get(message.author.id);
+    global.afkUsers.delete(message.author.id);
+    const timeAway = formatDuration(Math.floor((Date.now() - afkData.timestamp) / 1000));
+    message.reply(`✨ Welcome back, <@${message.author.id}>! I removed your AFK status. You drifted away for **${timeAway}**.`).then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
+  }
+
+  // 2. Check if a mentioned user is AFK
+  if (message.mentions.users.size > 0) {
+    message.mentions.users.forEach(u => {
+      if (global.afkUsers.has(u.id)) {
+        const data = global.afkUsers.get(u.id);
+        const timeAway = formatDuration(Math.floor((Date.now() - data.timestamp) / 1000));
+        message.channel.send(`🌙 **${u.username}** is currently AFK: *${data.reason}* (${timeAway} ago)`).then(m => setTimeout(() => m.delete().catch(() => {}), 6000));
+      }
+    });
+  }
 
   // XP Engine
   if (!xpCooldowns.has(message.author.id)) {
@@ -1324,6 +1454,9 @@ client.on('messageCreate', async message => {
           `**💍 Romance:** \`propose\`, \`marry\`, \`divorce\`, \`partner\`, \`love\`, \`ship\`\n` +
           `**✨ Social:** \`slap\`, \`bonk\`, \`poke\`, \`punch\`, \`pinch\`, \`bite\`, \`hug\`, \`kiss\`, \`pat\`, \`highfive\`, \`dance\`, \`laugh\`, \`blush\`, \`twerk\`\n` +
           `**🔮 Identity & Fun:** \`gay\`, \`lesbian\`, \`rate\`, \`cf\`, \`dice\`, \`crystalstorm\`, \`pickup\`, \`roast\`, \`anonymous\`\n` +
+          `**🛡️ Moderation:** \`ban\`, \`unban\`, \`timeout\`, \`untimeout\`, \`purge\`, \`warn\`, \`warnings\`, \`clearwarns\`, \`lock\`, \`unlock\`\n` +
+          `**📅 Birthday & AFK:** \`setbirthday\`, \`updatebirthday\`, \`removebirthday\`, \`birthdays\`, \`afk\`, \`snipe\`\n` +
+          `**ℹ️ Info:** \`userinfo\`, \`serverinfo\`\n`
           `**🛡️ Admin:** \`setup-roles\`, \`poll\`, \`ac\`, \`rc\`\n` +
           `**⚙️ Utility:** \`profile\`, \`rank\`, \`cd\`, \`cmds\`, \`help\`\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
@@ -1381,10 +1514,11 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [cdEmbed] });
     }
 
-    // MULTI-PAGE INTERACTIVE HELP MENU (cry!help)
+        // MULTI-PAGE INTERACTIVE HELP MENU (cry!help)
     if (command === 'help') {
       const getHelpPage = (cat) => {
         const embed = new EmbedBuilder().setColor('#2d0c45');
+
         if (cat === 'landing') {
           embed.setTitle('✧ CRYSTALBOT OPERATING SYSTEM ✧')
             .setDescription(
@@ -1393,23 +1527,27 @@ client.on('messageCreate', async message => {
               "Use the interactive buttons below to browse commands and cooldowns by category!"
             )
             .addFields(
-              { name: '🪙 Economy', value: 'Mining shifts, vault ledgers, and allowance.', inline: true },
+              { name: '🪙 Economy', value: 'Mining shifts, clean purse ledgers, and allowance.', inline: true },
               { name: '🛍️ Market & Wardrobe', value: 'Item stores, geode seeds, and 31 vanity roles.', inline: true },
               { name: '🌱 Botanical Nursery', value: 'Grow, water, fertilise, and quiz-harvest plants.', inline: true },
               { name: '♟️ Games & Gambling', value: 'Tactical chess duels, slots, and Mansion Imposter.', inline: true },
               { name: '💍 Romance & Social', value: 'Dating, starlight weddings, and CDN interactions.', inline: true },
               { name: '🔮 Identity & Fun', value: 'Gay/lesbian gauges, crystalstorms, and roasts.', inline: true },
-              { name: '🛡️ Admin Utility', value: 'Setup self-roles, interactive polls, and crystal awards.', inline: true }
+              { name: '🛡️ Moderation', value: 'Bans, timeouts, purges, warnings, and channel locks.', inline: true },
+              { name: '📅 Community & Utility', value: 'Birthdays, AFK status, snipes, and server info.', inline: true },
+              { name: '⭐ Starboard', value: '5-reaction auto-immortalization hall of fame.', inline: true }
             );
+
         } else if (cat === 'econ') {
           embed.setTitle('✧ MODULE: ECONOMY ✧')
             .setDescription(
               "`cry!work` — Mine 20-80 crystals (3m CD). 40 shifts triggers a 24h reset!\n" +
-              "`cry!bal [@user]` — Inspect crystal wallet and net worth (1m CD).\n" +
+              "`cry!bal [@user]` — Inspect your liquid crystal purse (1m CD).\n" +
               "`cry!daily` — Collect your 667 crystal daily grant (24h CD).\n" +
-              "`cry!pay @user <amt>` — Transfer crystals from your vault (1m CD).\n" +
-              "`cry!lb` — View Top 10 active server members (1m CD)."
+              "`cry!pay @user <amt>` — Transfer crystals from your purse (1m CD).\n" +
+              "`cry!lb` / `cry!rank` — Top 10 Celestial Leaderboard Canvas card (1m CD)."
             );
+
         } else if (cat === 'market') {
           embed.setTitle('✧ MODULE: MARKET & WARDROBE ✧')
             .setDescription(
@@ -1419,28 +1557,32 @@ client.on('messageCreate', async message => {
               "`cry!inv` — Inspect your current backpack.\n" +
               "`cry!roleshop` — Browse the 31 unique vanity cosmetic titles.\n" +
               "`cry!buyrole <id>` — Purchase and equip a role instantly.\n" +
-              "`cry!equip <id>` / `cry!unequip` — Manage your profile codex title.\n" +
+              "`cry!equip <id/name>` / `cry!unequip` — Sync and wear your server role!\n" +
               "`cry!myroles` — View all owned titles."
             );
+
         } else if (cat === 'nursery') {
           embed.setTitle('✧ MODULE: BOTANICAL NURSERY ✧')
             .setDescription(
               "`cry!sow <seed_id>` — Plant a seed in your private sanctuary.\n" +
-              "`cry!water` — Hydrate your active plant (24h CD). Missing >3 days wilts it!\n" +
+              "`cry!water` — Hydrate your plant (24h CD). Missing >3 days wilts it!\n" +
               "`cry!fertilise` — Use cocopeat once per plant to jump 2 stages instantly.\n" +
               "`cry!harvest` — Answer a botanical quiz on your plant to reap crystals!\n" +
-              "`cry!plants` — View your growth bar and historical harvest archive."
+              "`cry!plants` — View your HD Greenhouse Canvas card."
             );
+
         } else if (cat === 'games') {
           embed.setTitle('✧ MODULE: GAMES & GAMBLING ✧')
             .setDescription(
               "`cry!chessduel @user <wager>` — 3-minute tactical RPS duel!\n" +
               "`cry!imposter` — 4-phase Murder Mystery (10m Server Global CD).\n" +
+              "`cry!imposterlearn` — Complete rules & roles guide for Imposter.\n" +
               "`cry!trivia` — 15-second answering race for crystals.\n" +
               "`cry!slots <bet>` — Spin the crystal reels (3m CD).\n" +
               "`cry!beg` — Beg for 0-67 crystals (3m CD, 20 attempts limit).\n" +
               "`cry!rps <bet> <r/p/s>` — Rock Paper Scissors against the bot."
             );
+
         } else if (cat === 'romance') {
           embed.setTitle('✧ MODULE: ROMANCE & SOCIAL ✧')
             .setDescription(
@@ -1449,31 +1591,90 @@ client.on('messageCreate', async message => {
               "`cry!divorce` — Break celestial bonds (with troll ping).\n" +
               "`cry!partner [@user]` — View dating, marriage, and lovies codex.\n" +
               "`cry!love` — Send daily affection to your spouse (24h CD).\n" +
-              "`cry!ship @user [@user2]` — Astral Gate Canvas card (3m CD, 0s for VIP).\n\n" +
-              "**Social (1m CD):** `slap`, `bonk`, `poke`, `punch`, `pinch`, `bite`, `hug`, `kiss`, `pat`, `highfive`, `dance`, `laugh`, `blush`, `twerk`"
+              "`cry!ship @user [@user2]` — HD Astral Gate Canvas card (3m CD, 0s for VIP).\n\n" +
+              "**Social Actions (1m CD):**\n" +
+              "`slap`, `bonk`, `poke`, `punch`, `pinch`, `bite`, `hug`, `kiss`, `pat`, `highfive`, `dance`, `laugh`, `blush`, `twerk`"
             );
+
         } else if (cat === 'fun') {
-          embed.setTitle('✧ MODULE: FUN & UTILITY ✧')
+          embed.setTitle('✧ MODULE: FUN & COMMUNITY ✧')
             .setDescription(
               "`cry!gay` / `cry!lesbian` / `cry!rate` — Dynamic canvas gauges!\n" +
-              "`cry!cf` — Animated crystal coin toss (Zero-bet utility).\n" +
-              "`cry!dice` — Animated six-sided crystal die roll (Zero-bet utility).\n" +
-              "`cry!crystalstorm` — Bless a random active user with 500 crystals (3h Server CD)!\n" +
+              "`cry!cf` — Animated crystal coin toss (zero-bet utility).\n" +
+              "`cry!dice` — Animated six-sided crystal die roll (zero-bet utility).\n" +
+              "`cry!crystalstorm` — Bless a random active user with 500 crystals (3h Global CD)!\n" +
               "`cry!pickup` / `cry!roast` — Aesthetic charm or ruthless burns.\n" +
               "`cry!anonymous <msg>` — Send an untraceable message (3 uses max).\n" +
-              "`cry!profile` / `cry!rank` — Soul Codex visual profile."
+              "`cry!profile` — View your HD Celestial Soul Card.\n" +
+              "`cry!afk [reason]` — Set your AFK status with automatic time tracker.\n" +
+              "`cry!snipe` — Reveal the last deleted message (role-hierarchy protected)."
             );
-        } else if (cat === 'admin') {
-          embed.setTitle('✧ MODULE: ADMIN UTILITY ✧')
+
+        } else if (cat === 'birthday') {
+          embed.setTitle('✧ MODULE: BIRTHDAY LEDGER ✧')
             .setDescription(
-              "`cry!setup-roles` — Deploys all 6 modular self-role dropdown menus.\n" +
-              "`cry!poll <question>` — Initiates an interactive Yes/No or multi-option poll.\n" +
-              "`cry!ac @user <amt>` — Grants crystals directly to an account.\n" +
-              "`cry!rc @user <amt>` — Deducts crystals from an account."
+              "`cry!setbirthday DD/MM` — Register your birthday on the starlight ledger.\n" +
+              "`cry!updatebirthday DD/MM` — Update your existing birthday date.\n" +
+              "`cry!removebirthday` — Delete your birthday from the database.\n" +
+              "`cry!birthdays` — View upcoming server member birthdays.\n\n" +
+              "🎁 *CrystalBot awards 500 crystals and an automated midnight blessing on your birthday!*"
+            );
+
+        } else if (cat === 'mod') {
+          embed.setTitle('✧ MODULE: MODERATION & STAFF ✧')
+            .setDescription(
+              "*(Requires Staff Permissions or VIP)*\n\n" +
+              "`cry!ban @user [reason]` — Permanently ban a member.\n" +
+              "`cry!unban <userId>` — Lift a ban using user ID.\n" +
+              "`cry!timeout @user <10m/1h/1d> [reason]` — Mute a member natively.\n" +
+              "`cry!untimeout @user` — Remove a timeout early.\n" +
+              "`cry!purge <1-100>` — Bulk clear messages cleanly.\n" +
+              "`cry!warn @user <reason>` — Log an infraction to the database.\n" +
+              "`cry!warnings @user` — Check a user's infraction history.\n" +
+              "`cry!clearwarns @user` — Reset a user's warning record.\n" +
+              "`cry!lock` / `cry!unlock` — Lockdown or reopen current channel.\n" +
+              "`cry!poll <question>` — Start an interactive community poll.\n" +
+              "`cry!setup-roles` — Deploy all 6 reaction-role embeds.\n" +
+              "`cry!ac @user <amt>` / `cry!rc @user <amt>` — Add or deduct crystals.\n" +
+              "`cry!userinfo [@user]` / `cry!serverinfo` — Inspect member or server data."
             );
         }
+
+        embed.setFooter({ text: 'CrystalBot OS • Navigate using the buttons below' });
         return embed;
       };
+
+      // Interactive Buttons Setup (2 neat rows)
+      const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('help_econ').setLabel('Economy').setStyle(ButtonStyle.Primary).setEmoji('🪙'),
+        new ButtonBuilder().setCustomId('help_market').setLabel('Market').setStyle(ButtonStyle.Primary).setEmoji('🛍️'),
+        new ButtonBuilder().setCustomId('help_nursery').setLabel('Nursery').setStyle(ButtonStyle.Primary).setEmoji('🌱'),
+        new ButtonBuilder().setCustomId('help_games').setLabel('Games').setStyle(ButtonStyle.Primary).setEmoji('♟️')
+      );
+
+      const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('help_romance').setLabel('Romance').setStyle(ButtonStyle.Secondary).setEmoji('💍'),
+        new ButtonBuilder().setCustomId('help_fun').setLabel('Fun & AFK').setStyle(ButtonStyle.Secondary).setEmoji('🔮'),
+        new ButtonBuilder().setCustomId('help_birthday').setLabel('Birthday').setStyle(ButtonStyle.Success).setEmoji('🎂'),
+        new ButtonBuilder().setCustomId('help_mod').setLabel('Moderation').setStyle(ButtonStyle.Danger).setEmoji('🛡️')
+      );
+
+      const helpMsg = await message.reply({ embeds: [getHelpPage('landing')], components: [row1, row2] });
+      const collector = helpMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+
+      collector.on('collect', async i => {
+        if (i.user.id !== message.author.id) return i.reply({ content: "Run cry!help to open your own guide!", ephemeral: true });
+        const cat = i.customId.replace('help_', '');
+        await i.update({ embeds: [getHelpPage(cat)], components: [row1, row2] });
+      });
+
+      collector.on('end', () => {
+        row1.components.forEach(b => b.setDisabled(true));
+        row2.components.forEach(b => b.setDisabled(true));
+        helpMsg.edit({ components: [row1, row2] }).catch(() => {});
+      });
+      return;
+    
 
       const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('help_econ').setLabel('Economy').setStyle(ButtonStyle.Primary).setEmoji('🪙'),
@@ -3404,6 +3605,308 @@ client.on('messageCreate', async message => {
     return message.reply("⚠️ An astral disruption occurred while executing this command.");
   }
 });
+
+    // Staff Permission Helper (Admin, Moderate, ManageMessages, or VIP)
+    const isStaff = message.member.permissions.has(PermissionFlagsBits.Administrator) ||
+                    message.member.permissions.has(PermissionFlagsBits.ModerateMembers) ||
+                    message.member.permissions.has(PermissionFlagsBits.ManageMessages) ||
+                    isVip;
+
+    // ==========================================
+    // MODULE: AFK SYSTEM
+    // ==========================================
+    if (command === 'afk') {
+      const reason = args.join(' ') || 'Away from keyboard';
+      global.afkUsers.set(message.author.id, { reason, timestamp: Date.now() });
+      return message.reply(`🌙 You are now AFK: **${reason}**. I will notify anyone who mentions you!`);
+    }
+
+    // ==========================================
+    // MODULE: ROLE-HIERARCHY SNIPE
+    // ==========================================
+    if (command === 'snipe') {
+      const sniped = global.snipes.get(message.channel.id);
+      if (!sniped) return message.reply("💨 There are no recently deleted messages in this channel!");
+
+      // Hierarchy Guard: Lower-role cannot snipe higher-role members
+      if (!isVip && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+        if (sniped.member && sniped.member.roles.highest.position >= message.member.roles.highest.position && sniped.author.id !== message.author.id) {
+          return message.reply("🔒 **Protected Starlight!** You cannot snipe messages deleted by members with an equal or higher role than you.");
+        }
+      }
+
+      const snipeEmbed = new EmbedBuilder()
+        .setColor('#9370db')
+        .setAuthor({ name: sniped.author.tag, iconURL: sniped.author.displayAvatarURL({ dynamic: true }) })
+        .setDescription(sniped.content || '*[Attachment Only]*')
+        .setFooter({ text: `Deleted ${formatDuration(Math.floor((Date.now() - sniped.timestamp) / 1000))} ago` })
+        .setTimestamp(sniped.timestamp);
+
+      if (sniped.attachments.length > 0) {
+        snipeEmbed.setImage(sniped.attachments[0]);
+      }
+
+      return message.channel.send({ embeds: [snipeEmbed] });
+    }
+
+    // ==========================================
+    // MODULE: BIRTHDAY CALENDAR
+    // ==========================================
+    if (command === 'setbirthday') {
+      const input = args[0]; // DD/MM
+      if (!input || !input.includes('/')) return message.reply("Usage: `cry!setbirthday DD/MM` (e.g., `cry!setbirthday 14/08`)");
+
+      const [dStr, mStr] = input.split('/');
+      const day = parseInt(dStr, 10);
+      const month = parseInt(mStr, 10);
+
+      if (isNaN(day) || isNaN(month) || day < 1 || day > 31 || month < 1 || month > 12) {
+        return message.reply("❌ Invalid date! Provide a valid day (1–31) and month (1–12) in `DD/MM` format.");
+      }
+
+      const user = await getUser(message.author.id);
+      if (user.birthday && user.birthday.day) {
+        return message.reply("⚠️ You already set your birthday! Use `cry!updatebirthday DD/MM` to change it.");
+      }
+
+      user.birthday = { day, month };
+      await user.save();
+      return message.reply(`🎂 Starlight birthday recorded as **${day}/${month}**! You will receive +500 ${cryCoin} on your day!`);
+    }
+
+    if (command === 'updatebirthday') {
+      const input = args[0];
+      if (!input || !input.includes('/')) return message.reply("Usage: `cry!updatebirthday DD/MM`");
+
+      const [dStr, mStr] = input.split('/');
+      const day = parseInt(dStr, 10);
+      const month = parseInt(mStr, 10);
+
+      if (isNaN(day) || isNaN(month) || day < 1 || day > 31 || month < 1 || month > 12) {
+        return message.reply("❌ Invalid date format `DD/MM`.");
+      }
+
+      const user = await getUser(message.author.id);
+      user.birthday = { day, month };
+      await user.save();
+      return message.reply(`🎂 Birthday updated to **${day}/${month}**!`);
+    }
+
+    if (command === 'removebirthday') {
+      const user = await getUser(message.author.id);
+      user.birthday = { day: null, month: null };
+      await user.save();
+      return message.reply("🗑️ Your birthday record was dissolved from the celestial ledger.");
+    }
+
+    if (command === 'birthdays') {
+      const allBdays = await User.find({ 'birthday.day': { $ne: null } });
+      const currentMonth = new Date().getMonth() + 1;
+
+      const upcoming = allBdays
+        .filter(u => message.guild.members.cache.has(u.userId))
+        .map(u => ({ id: u.userId, d: u.birthday.day, m: u.birthday.month }))
+        .sort((a, b) => a.m - b.m || a.d - b.d);
+
+      if (upcoming.length === 0) return message.reply("📅 No registered birthdays in this server yet!");
+
+      const rows = upcoming.slice(0, 15).map(u => `• <@${u.id}> — **${u.d}/${u.m}**`).join('\n');
+      const bEmbed = new EmbedBuilder()
+        .setTitle('✧ CELESTIAL BIRTHDAY LEDGER ✧')
+        .setColor('#f4a6b8')
+        .setDescription(rows)
+        .setFooter({ text: "Register yours with cry!setbirthday DD/MM" });
+
+      return message.channel.send({ embeds: [bEmbed] });
+    }
+
+    // ==========================================
+    // MODULE: MODERATION SUITE (STAFF ONLY)
+    // ==========================================
+    if (command === 'ban') {
+      if (!isStaff) return message.reply("❌ Staff permissions required.");
+      const target = message.mentions.members.first();
+      const reason = args.slice(1).join(' ') || 'No reason provided';
+
+      if (!target) return message.reply("Usage: `cry!ban @user [reason]`");
+      if (target.id === message.author.id) return message.reply("❌ You cannot ban yourself.");
+      if (target.roles.highest.position >= message.member.roles.highest.position && !isVip) {
+        return message.reply("❌ You cannot ban someone with an equal or higher role than you.");
+      }
+
+      try {
+        await target.send(`🔨 You have been banned from **${message.guild.name}** for: *${reason}*`).catch(() => {});
+        await target.ban({ reason });
+        return message.channel.send(`🔨 Banned **${target.user.tag}** \vert{} Reason: *${reason}*`);
+      } catch (err) {
+        return message.reply(`❌ Could not ban member: \`${err.message}\``);
+      }
+    }
+
+    if (command === 'unban') {
+      if (!isStaff) return message.reply("❌ Staff permissions required.");
+      const userId = args[0];
+      if (!userId) return message.reply("Usage: `cry!unban <userId>`");
+
+      try {
+        await message.guild.bans.remove(userId);
+        return message.channel.send(`✨ Successfully unbanned user ID \`${userId}\`.`);
+      } catch (err) {
+        return message.reply(`❌ Could not unban: \`${err.message}\``);
+      }
+    }
+
+    if (command === 'timeout' || command === 'mute') {
+      if (!isStaff) return message.reply("❌ Staff permissions required.");
+      const target = message.mentions.members.first();
+      const durationStr = args[1]; // 10m, 1h, 1d
+      const reason = args.slice(2).join(' ') || 'No reason provided';
+
+      if (!target || !durationStr) return message.reply("Usage: `cry!timeout @user <10m/1h/1d> [reason]`");
+
+      // Calculate milliseconds
+      let ms = 0;
+      if (durationStr.endsWith('m')) ms = parseInt(durationStr) * 60 * 1000;
+      else if (durationStr.endsWith('h')) ms = parseInt(durationStr) * 3600 * 1000;
+      else if (durationStr.endsWith('d')) ms = parseInt(durationStr) * 86400 * 1000;
+
+      if (!ms || ms > 28 * 86400 * 1000) return message.reply("❌ Provide a valid duration (e.g., `10m`, `1h`, `7d`). Max 28 days.");
+
+      try {
+        await target.timeout(ms, reason);
+        return message.channel.send(`🔇 Timed out **${target.user.tag}** for **${durationStr}** \vert{} Reason: *${reason}*`);
+      } catch (err) {
+        return message.reply(`❌ Could not timeout member: \`${err.message}\``);
+      }
+    }
+
+    if (command === 'untimeout' || command === 'unmute') {
+      if (!isStaff) return message.reply("❌ Staff permissions required.");
+      const target = message.mentions.members.first();
+      if (!target) return message.reply("Usage: `cry!untimeout @user`");
+
+      try {
+        await target.timeout(null);
+        return message.channel.send(`🔊 Removed timeout from **${target.user.tag}**.`);
+      } catch (err) {
+        return message.reply(`❌ Could not remove timeout: \`${err.message}\``);
+      }
+    }
+
+    if (command === 'purge' || command === 'clear') {
+      if (!isStaff) return message.reply("❌ Staff permissions required.");
+      const amount = parseInt(args[0], 10);
+      if (isNaN(amount) || amount < 1 || amount > 100) {
+        return message.reply("Usage: `cry!purge <1-100>`");
+      }
+
+      await message.delete().catch(() => {});
+      const deleted = await message.channel.bulkDelete(amount, true).catch(err => {
+        return message.reply(`❌ Could not bulk delete: \`${err.message}\``);
+      });
+
+      if (deleted) {
+        const confirm = await message.channel.send(`🧹 Swept away **${deleted.size}** messages!`);
+        setTimeout(() => confirm.delete().catch(() => {}), 3500);
+      }
+      return;
+    }
+
+    if (command === 'warn') {
+      if (!isStaff) return message.reply("❌ Staff permissions required.");
+      const target = message.mentions.members.first();
+      const reason = args.slice(1).join(' ') || 'No reason specified';
+
+      if (!target) return message.reply("Usage: `cry!warn @user <reason>`");
+
+      const uDoc = await getUser(target.id);
+      uDoc.warnings.push({ moderatorId: message.author.id, reason, timestamp: new Date() });
+      await uDoc.save();
+
+      return message.channel.send(`⚠️ Warned **${target.user.tag}** | Reason: *${reason}* (Total Warns:${uDoc.warnings.length})`);
+    }
+
+    if (command === 'warnings') {
+      if (!isStaff) return message.reply("❌ Staff permissions required.");
+      const target = message.mentions.members.first() || message.member;
+      const uDoc = await getUser(target.id);
+
+      if (!uDoc.warnings || uDoc.warnings.length === 0) {
+        return message.reply(`✨ **${target.user.tag}** has a pristine record with zero warnings.`);
+      }
+
+      const rows = uDoc.warnings.map((w, idx) => `\`#${idx + 1}\` *${w.reason}* — by <@${w.moderatorId}> (${new Date(w.timestamp).toLocaleDateString()})`).join('\n');
+      const wEmbed = new EmbedBuilder()
+        .setTitle(`⚠️ INFRACTION LOG: ${target.user.tag}`)
+        .setColor('#e63946')
+        .setDescription(rows)
+        .setFooter({ text: `Total infractions: ${uDoc.warnings.length}` });
+
+      return message.channel.send({ embeds: [wEmbed] });
+    }
+
+    if (command === 'clearwarns') {
+      if (!isStaff) return message.reply("❌ Staff permissions required.");
+      const target = message.mentions.members.first();
+      if (!target) return message.reply("Usage: `cry!clearwarns @user`");
+
+      const uDoc = await getUser(target.id);
+      uDoc.warnings = [];
+      await uDoc.save();
+
+      return message.channel.send(`🕊️ Cleared all warnings for **${target.user.tag}**! Clean record restored.`);
+    }
+
+    if (command === 'lock') {
+      if (!isStaff) return message.reply("❌ Staff permissions required.");
+      await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: false });
+      return message.channel.send('🔒 **Channel Locked.** Chat access has been quarantined by server staff.');
+    }
+
+    if (command === 'unlock') {
+      if (!isStaff) return message.reply("❌ Staff permissions required.");
+      await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, { SendMessages: null });
+      return message.channel.send('🔓 **Channel Unlocked.** Conversation permissions restored.');
+    }
+
+    if (command === 'serverinfo') {
+      const { guild } = message;
+      const owner = await guild.fetchOwner();
+      const sEmbed = new EmbedBuilder()
+        .setTitle(`✧ ${guild.name} ✧`)
+        .setThumbnail(guild.iconURL({ dynamic: true }))
+        .setColor('#9370db')
+        .addFields(
+          { name: '👑 Owner', value: `${owner.user.tag}`, inline: true },
+          { name: '👥 Members', value: `${guild.memberCount}`, inline: true },
+          { name: '✨ Boost Tier', value: `Level ${guild.premiumTier} (${guild.premiumSubscriptionCount} boosts)`, inline: true },
+          { name: '💬 Channels', value: `${guild.channels.cache.size}`, inline: true },
+          { name: '🛡️ Roles', value: `${guild.roles.cache.size}`, inline: true },
+          { name: '📅 Created', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:R>`, inline: true }
+        )
+        .setFooter({ text: `Server ID: ${guild.id}` });
+
+      return message.channel.send({ embeds: [sEmbed] });
+    }
+
+    if (command === 'userinfo' || command === 'whois') {
+      const target = message.mentions.members.first() || message.member;
+      const roles = target.roles.cache.filter(r => r.name !== '@everyone').map(r => r.name).join(', ') || 'None';
+
+      const uEmbed = new EmbedBuilder()
+        .setTitle(`✧ USER CODEX: ${target.user.username} ✧`)
+        .setThumbnail(target.user.displayAvatarURL({ dynamic: true }))
+        .setColor('#2d0c45')
+        .addFields(
+          { name: 'Tag', value: `${target.user.tag}`, inline: true },
+          { name: 'ID', value: `\`${target.id}\``, inline: true },
+          { name: 'Joined Server', value: `<t:${Math.floor(target.joinedTimestamp / 1000)}:R>`, inline: true },
+          { name: 'Created Account', value: `<t:${Math.floor(target.user.createdTimestamp / 1000)}:R>`, inline: true },
+          { name: 'Roles', value: roles.length > 1000 ? `${roles.substring(0, 990)}...` : roles, inline: false }
+        );
+
+      return message.channel.send({ embeds: [uEmbed] });
+    }
 
 // ==========================================
 // 8. INITIALIZATION & DATABASE BOOTSTRAP

@@ -8,9 +8,7 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   ComponentType,
-  PermissionFlagsBits,
-  StringSelectMenuBuilder,
-  StringSelectMenuOptionBuilder
+  PermissionFlagsBits
 } from 'discord.js';
 import mongoose from 'mongoose';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
@@ -37,53 +35,53 @@ const VIP_USER_ID = '1471141307400454245';
 
 const WELCOME_CHANNEL_ID = '1531265642928541786';
 const GOODBYE_CHANNEL_ID = '1558487271630708756';
-const STARBOARD_CHANNEL_ID = '1558487271630708756'; 
+const STARBOARD_CHANNEL_ID = '1558487271630708756';
 
+const REACTION_ROLES_MAP = {
+  // 1. Gender / Pronouns
+  '🌸': '1558480429273583678',
+  '🌿': '1558480593073868841',
+  '🌙': '1558480712695414874',
+  '✨': '1558480820874780722',
 
-const SELF_ROLE_IDS = {
-  gender: {
-    'she_her': '1558480429273583678',
-    'he_him': '1558480593073868841',
-    'they_them': '1558480712695414874',
-    'any_all': '1558480820874780722'
-  },
-  age: {
-    '13_17': '1558481003746697266',
-    '18_21': '1558481095446495233',
-    '21_plus': '1558481253370433536'
-  },
-  region: {
-    'asia': '1558481398069727362',
-    'europe': '1558481498347413584',
-    'americas': '1558481607093125200',
-    'other': '1558482222242209904'
-  },
-  relationship: {
-    'single': '1558482393395101897',
-    'taken': '1558482471891247204',
-    'married': '1558482562593067089',
-    'third_wheeler': '1558482718705188874',
-    'hopeless_romantic': '1558482810136694844',
-    'i_give_up': '1558482907755053286'
-  },
-  aesthetic: {
-    'moonlight': '1558483084884574411',
-    'daydream': '1558483165293707344',
-    'rosewater': '1558483247237828681',
-    'ethereal': '1558483493644668998',
-    'blue_hour': '1558483592378581113',
-    'lover': '1558483731701047406'
-  },
-  notifications: {
-    'arise': '1558483922654863370',
-    'gaming': '1558484017710629075',
-    'movie': '1558484104843100190',
-    'anime': '1558484202184515734'
-  }
+  // 2. Age Bracket
+  '🐣': '1558481003746697266',
+  '🪷': '1558481095446495233',
+  '☕': '1558481253370433536',
+
+  // 3. Region / Continent
+  '🌏': '1558481398069727362',
+  '🌍': '1558481498347413584',
+  '🌎': '1558481607093125200',
+  '🏝️': '1558482222242209904',
+
+  // 4. Relationship Status
+  '💙': '1558482393395101897',
+  '💖': '1558482471891247204',
+  '💍': '1558482562593067089',
+  '🍿': '1558482718705188874',
+  '💌': '1558482810136694844',
+  '🥀': '1558482907755053286',
+
+  // 5. Aesthetic Colors
+  '🔮': '1558483084884574411',
+  '☁️': '1558483165293707344',
+  '🩷': '1558483247237828681',
+  '💜': '1558483493644668998',
+  '🌌': '1558483592378581113',
+  '🌷': '1558483731701047406',
+
+  // 6. Notifications
+  '🔔': '1558483922654863370',
+  '🎮': '1558484017710629075',
+  '🎬': '1558484104843100190',
+  '⛩️': '1558484202184515734'
 };
 
-// Memory maps for cooldowns & active game sessions
+// Memory maps for cooldowns, active games, snipe, and AFK
 if (!global.botCooldowns) global.botCooldowns = new Map();
+if (!global.snipes) global.snipes = new Map();
+if (!global.afkUsers) global.afkUsers = new Map();
 const activeGames = new Map();
 const xpCooldowns = new Set();
 
@@ -115,17 +113,11 @@ function formatDuration(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  if (m > 0) return `${m}m ${s}s`;
+  if (h > 0) return `${h}h ${m}m${s}s`;
+  if (m > 0) return `${m}m${s}s`;
   return `${s}s`;
 }
 
-// Memory stores for Snipe and AFK
-if (!global.snipes) global.snipes = new Map(); // channelId -> { content, author, timestamp, attachments }
-if (!global.afkUsers) global.afkUsers = new Map(); // userId -> { reason, timestamp }
-
-
-// Canvas rounded rect fallback
 function drawRoundedRect(ctx, x, y, width, height, radius) {
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -144,14 +136,11 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
 // 2. STATIC CATALOGS & DATA
 // ==========================================
 const MARKET_ITEMS = {
-  // Page 1: Mental Store
   unemployed_badge: { id: 'unemployed_badge', name: 'Unemployed Badge', price: 0, sell: 0, category: 'mental', desc: 'Proof that you do absolutely nothing all day.' },
   left_sock: { id: 'left_sock', name: 'Left Sock', price: 69, sell: 34, category: 'mental', desc: 'Where did the right one go? Nobody knows.' },
   potato: { id: 'potato', name: 'Potato', price: 2300, sell: 1150, category: 'mental', desc: 'Can survive nuclear fallout and runs basic bots.' },
   toilet_paper: { id: 'toilet_paper', name: 'Toilet Paper', price: 8888, sell: 4444, category: 'mental', desc: 'Peak pandemic luxury flex.' },
   wizard_hat: { id: 'wizard_hat', name: 'Wizard Hat', price: 12000, sell: 6000, category: 'mental', desc: '+5 Intelligence, -10 social competence.' },
-
-  // Page 2: Nursery
   cocopeat: { id: 'cocopeat', name: 'Cocopeat (Fertiliser)', price: 800, sell: 400, category: 'nursery', desc: 'Rich compost that boosts plants by 2 stages.' },
   watering_can: { id: 'watering_can', name: 'Watering Can', price: 1500, sell: 750, category: 'nursery', desc: 'Starlight vessel required for daily hydration.' },
   rose_seed: { id: 'rose_seed', name: 'Rose Seed', price: 500, sell: 250, category: 'seeds', plantName: 'Rose' },
@@ -161,8 +150,6 @@ const MARKET_ITEMS = {
   orchid_seed: { id: 'orchid_seed', name: 'Orchid Seed', price: 900, sell: 450, category: 'seeds', plantName: 'Orchid' },
   lotus_seed: { id: 'lotus_seed', name: 'Lotus Seed', price: 950, sell: 475, category: 'seeds', plantName: 'Lotus' },
   crystal_geode_seed: { id: 'crystal_geode_seed', name: 'Crystal Geode Seed', price: 1000, sell: 500, category: 'seeds', plantName: 'Crystal Geode' },
-
-  // Page 3: Jewellery Shop
   normal_ring: { id: 'normal_ring', name: 'Normal Ring', price: 5000, sell: 2500, category: 'jewellery', desc: 'Required to propose and become BF/GF.' },
   wedding_ring: { id: 'wedding_ring', name: 'Wedding Ring', price: 10000, sell: 5000, category: 'jewellery', desc: 'Required to bind souls in holy matrimony.' },
   crystal_badge: { id: 'crystal_badge', name: 'Crystal Badge', price: 30000, sell: 15000, category: 'jewellery', desc: 'A gleaming sigil of crystal affluence.' },
@@ -256,37 +243,36 @@ const BOTANICAL_FACTS = {
 };
 
 const TRIVIA_QUESTIONS = [
-  { q: "Whom do I love unconditionally in this server?", a: "Sarah" },
-  { q: "Which planet in our solar system has the highest number of recognized moons?", a: "saturn" },
-  { q: "What is the hardest known naturally occurring mineral on Earth?", a: "diamond" },
-  { q: "What element gives natural amethyst its signature purple hue?", a: "iron" },
-  { q: "What is the capital of Japan?", a: "tokyo" },
-  { q: "Which anime features characters fighting colossal humanoids with 3D maneuver gear?", a: "attack on titan"},
-  { q: "What is the chemical symbol for the element Gold?", a: "au" },
-  { q: "How many squares are there on a standard tournament chessboard?", a: "64" },
-  { q: "Which gas makes up approximately 78% of Earth's atmosphere?", a: "nitrogen" },
-  { q: "In cricket, how many runs are awarded when a batter hits the ball over the boundary on the full?", a: "6" },
-  { q: "Which legendary Studio Ghibli film tells the story of an engineer designing airplanes?", a: "the wind rises" },
-  { q: "What is the powerhouse organelle of eukaryotic cells?", a: "mitochondria" },
-  { q: "What is the largest ocean on Earth?", a: "Pacific"},
-  { q: "What is the fastest land animal?", a: "Cheetah"},
-  { q: "Which scientist formulated the theory of relativity?", a: "Einstein"},
-  { q: "What is the name of the fantasy drama series based on George R.R. Martin's novels?", a: "Game of thrones"},
-  { q: "Which planet is known as the Red Planet?", a: "Mars"},
-  { q: "Who is the founder and CEO of SpaceX?", a: "Elon Musk"},
-  { q: "Which superhero is known as the Man of Steel?", a: "Superman"},
-  { q: "How many continents are there on Earth?", a: "7"},
-  { q: "How many sides does a decagon have?", a: "10"},
-  { q: "What is the smallest prime number?", a: "2"},
-  { q: "How many minutes are in 24 hours?", a: "1440"},
-  { q: "What is the freezing point of water in degree celsius?", a: "0"},
-  { q: "What is the largest organ in the human body?", a: "skin"},
-  { q: "The ancient pyramids of Giza are located in which country?", a: "Egypt"},
-  { q: "What is the smallest country in the world?", a: "Vatican City"},
-  { q: "How many teeth does an adult human have?", a: "32"},
-  { q: "How many chambers does a human heart have?", a: "4"},
-  { q: "Who is known as the father of genetics?", a: "Mendel"}
-  
+  { q: "Whom do I love unconditionally in this server?", a: ["sarah", "mom", "my mom"] },
+  { q: "Which planet in our solar system has the highest number of recognized moons?", a: ["saturn"] },
+  { q: "What is the hardest known naturally occurring mineral on Earth?", a: ["diamond"] },
+  { q: "What element gives natural amethyst its signature purple hue?", a: ["iron", "fe"] },
+  { q: "What is the capital of Japan?", a: ["tokyo"] },
+  { q: "Which anime features characters fighting colossal humanoids with 3D maneuver gear?", a: ["attack on titan", "aot", "shingeki no kyojin"] },
+  { q: "What is the chemical symbol for the element Gold?", a: ["au"] },
+  { q: "How many squares are there on a standard tournament chessboard?", a: ["64"] },
+  { q: "Which gas makes up approximately 78% of Earth's atmosphere?", a: ["nitrogen", "n2"] },
+  { q: "In cricket, how many runs are awarded when a batter hits the ball over the boundary on the full?", a: ["6", "six"] },
+  { q: "Which legendary Studio Ghibli film tells the story of an engineer designing airplanes?", a: ["the wind rises"] },
+  { q: "What is the powerhouse organelle of eukaryotic cells?", a: ["mitochondria", "mitochondrion"] },
+  { q: "What is the largest ocean on Earth?", a: ["pacific", "pacific ocean"] },
+  { q: "What is the fastest land animal?", a: ["cheetah"] },
+  { q: "Which scientist formulated the theory of relativity?", a: ["einstein", "albert einstein"] },
+  { q: "What is the name of the fantasy drama series based on George R.R. Martin's novels?", a: ["game of thrones", "got"] },
+  { q: "Which planet is known as the Red Planet?", a: ["mars"] },
+  { q: "Who is the founder and CEO of SpaceX?", a: ["elon musk", "musk"] },
+  { q: "Which superhero is known as the Man of Steel?", a: ["superman"] },
+  { q: "How many continents are there on Earth?", a: ["7", "seven"] },
+  { q: "How many sides does a decagon have?", a: ["10", "ten"] },
+  { q: "What is the smallest prime number?", a: ["2", "two"] },
+  { q: "How many minutes are in 24 hours?", a: ["1440"] },
+  { q: "What is the freezing point of water in degree celsius?", a: ["0", "zero", "0c"] },
+  { q: "What is the largest organ in the human body?", a: ["skin"] },
+  { q: "The ancient pyramids of Giza are located in which country?", a: ["egypt"] },
+  { q: "What is the smallest country in the world?", a: ["vatican city", "vatican"] },
+  { q: "How many teeth does an adult human have?", a: ["32"] },
+  { q: "How many chambers does a human heart have?", a: ["4", "four"] },
+  { q: "Who is known as the father of genetics?", a: ["mendel", "gregor mendel"] }
 ];
 
 const ROAST_BANK = [
@@ -301,22 +287,20 @@ const ROAST_BANK = [
   "has a face that would make onions cry.",
   "I consider you my Sun. Now, please get 93 million miles away from here.",
   "You are the human version of cramps.",
-  "Were you born this dumb, or did you acquire experience over the time?",
-  "is the reason why the middle finger was invented in the first place",
+  "Were you born this dumb, or did you acquire experience over time?",
+  "is the reason why the middle finger was invented in the first place.",
   "You can’t imagine how much happiness you can bring…by leaving the server.",
   "Somewhere, a tree is producing oxygen for you. I’m sorry for it.",
-  "A glowstick has a brighter future than you",
+  "A glowstick has a brighter future than you.",
   "Your birth certificate needs to be rewritten as a letter of apology.",
   "If I throw a stick for you, will you leave?",
   "needs a kiss on the neck from an alligator.",
-  "I will kick your ass so hard that you will fly to the farthest planet and it will also crash",
+  "I will kick your ass so hard that you will fly to the farthest planet and it will also crash.",
   "is the reason I don’t want kids.",
   "Your face could scare the shit out of a toilet.",
   "Twinkle, twinkle, little star, I want to hit you with my car.",
   "Roses are red, monsters are green, look in the mirror, you’ll see what I mean.",
   "If I were a dog and you were a flower, I’d lift my leg up and give you a shower."
-  
-  
 ];
 
 const PICKUP_BANK = [
@@ -348,51 +332,6 @@ const PICKUP_BANK = [
 ];
 
 // ==========================================
-// SELF-ROLES REACTION MAPPING
-// ==========================================
-const REACTION_ROLES_MAP = {
-  // 1. Gender / Pronouns
-  '🌸': '1558480429273583678', // She/her
-  '🌿': '1558480593073868841', // He/him
-  '🌙': '1558480712695414874', // They/them
-  '✨': '1558480820874780722', // Any/all
-
-  // 2. Age Bracket
-  '🐣': '1558481003746697266', // 13-17
-  '🪷': '1558481095446495233', // 18-21
-  '☕': '1558481253370433536', // 21+
-
-  // 3. Region / Continent
-  '🌏': '1558481398069727362', // Asia
-  '🌍': '1558481498347413584', // Europe
-  '🌎': '1558481607093125200', // Americas
-  '🏝️': '1558482222242209904', // Other
-
-  // 4. Relationship Status
-  '💙': '1558482393395101897', // Single
-  '💖': '1558482471891247204', // Taken
-  '💍': '1558482562593067089', // Married
-  '🍿': '1558482718705188874', // Third Wheeler
-  '💌': '1558482810136694844', // Hopeless Romantic
-  '🥀': '1558482907755053286', // I Give Up
-
-  // 5. Aesthetic Colors
-  '🔮': '1558483084884574411', // Moonlight
-  '☁️': '1558483165293707344', // Daydream
-  '🩷': '1558483247237828681', // Rosewater
-  '💜': '1558483493644668998', // Ethereal
-  '🌌': '1558483592378581113', // Blue Hour
-  '🌷': '1558483731701047406', // Lover
-
-  // 6. Notifications
-  '🔔': '1558483922654863370', // Arise
-  '🎮': '1558484017710629075', // Gaming
-  '🎬': '1558484104843100190', // Movie
-  '⛩️': '1558484202184515734'  // Anime
-};
-
-
-// ==========================================
 // 3. MONGOOSE SCHEMAS & DATABASE ENGINE
 // ==========================================
 const plantDocSchema = new mongoose.Schema({
@@ -412,33 +351,28 @@ const userProfileSchema = new mongoose.Schema({
   level: { type: Number, default: 1 },
   exp: { type: Number, default: 0 },
 
-    // Moderation Warnings
   warnings: [{
     moderatorId: String,
     reason: String,
     timestamp: { type: Date, default: Date.now }
   }],
 
-  // Birthday Ledger
   birthday: {
     day: { type: Number, default: null },
     month: { type: Number, default: null }
   },
   lastBirthdayYear: { type: Number, default: null },
-  
-  // Economy Attempt Trackers
+
   workAttempts: { type: Number, default: 0 },
   workResetTime: { type: Date, default: null },
   begAttempts: { type: Number, default: 0 },
   begResetTime: { type: Date, default: null },
   dailyLastClaimed: { type: Date, default: null },
 
-  // Inventory & Wardrobe
   inventory: { type: Map, of: Number, default: {} },
   equippedRole: { type: String, default: 'Default Prism' },
   rolesOwned: { type: [String], default: ['Default Prism'] },
 
-  // Romance
   datingPartnerId: { type: String, default: null },
   datingDate: { type: Date, default: null },
   spouseId: { type: String, default: null },
@@ -446,11 +380,9 @@ const userProfileSchema = new mongoose.Schema({
   loviesCount: { type: Number, default: 0 },
   lastLoveDate: { type: Date, default: null },
 
-  // Nursery
   activePlant: { type: plantDocSchema, default: null },
   harvestedPlants: { type: [String], default: [] },
 
-  // Utility
   anonymousCount: { type: Number, default: 0 }
 });
 
@@ -487,12 +419,12 @@ async function addExperience(user, amount, message) {
     user.exp -= needed;
     const bonus = user.level * 50;
     user.balance += bonus;
-    message.channel.send(`🎉 **ASCENSION!** <@${user.userId}> attuned deeper with the crystal realm and reached **Level ${user.level}**! (+${bonus} ${cryCoin})`).catch(() => {});
+    message.channel.send(`🎉 **ASCENSION!** <@${user.userId}> attuned deeper with the crystal realm and reached **Level ${user.level}**! (+${bonus}${cryCoin})`).catch(() => {});
   }
 }
 
 // ==========================================
-// CELESTIAL INFINITY SHIP CARD RENDERER (HD)
+// CANVAS RENDER ENGINES
 // ==========================================
 async function renderShipCard(u1, u2, resonance) {
   const w = 1400;
@@ -785,7 +717,6 @@ async function renderShipCard(u1, u2, resonance) {
   return canvas.toBuffer('image/png');
 }
 
-// Universal Identity Meter (Gay, Lesbian, Rate)
 async function renderGauge(user, pct, label, colors) {
   const w = 700, h = 240;
   const canvas = createCanvas(w, h);
@@ -841,18 +772,12 @@ async function renderGauge(user, pct, label, colors) {
   return canvas.toBuffer('image/png');
 }
 
-// ==========================================
-// CANVAS CARD ENGINES: RANK/LB, PROFILE, PLANTS
-// ==========================================
-
-// 1. TOP 10 CELESTIAL LEADERBOARD & RANK CARD
 async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMember) {
   const w = 1200;
   const h = 760;
   const canvas = createCanvas(w, h);
   const ctx = canvas.getContext('2d');
 
-  // Background gradient
   const bg = ctx.createLinearGradient(0, 0, w, h);
   bg.addColorStop(0, '#0c0714');
   bg.addColorStop(0.5, '#160d26');
@@ -860,25 +785,21 @@ async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMem
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 
-  // Nebula blooms
   const bloom = ctx.createRadialGradient(600, 200, 50, 600, 200, 500);
   bloom.addColorStop(0, 'rgba(114, 9, 183, 0.25)');
   bloom.addColorStop(1, 'transparent');
   ctx.fillStyle = bloom;
   ctx.fillRect(0, 0, w, h);
 
-  // Outer border
   ctx.strokeStyle = '#c8a2c8';
   ctx.lineWidth = 3;
   ctx.strokeRect(20, 20, w - 40, h - 40);
 
-  // Header Title
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 32px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('✧ CELESTIAL SOUL LEADERBOARD • TOP 10 ✧', w / 2, 65);
 
-  // Render Top 10 Entries (Left Column: 1-5, Right Column: 6-10)
   for (let idx = 0; idx < 10; idx++) {
     const entry = topUsers[idx];
     const col = idx < 5 ? 0 : 1;
@@ -886,7 +807,6 @@ async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMem
     const x = col === 0 ? 55 : 625;
     const y = 95 + (row * 105);
 
-    // Entry box
     ctx.fillStyle = idx === 0 ? 'rgba(255, 215, 0, 0.08)' : 'rgba(255, 255, 255, 0.04)';
     drawRoundedRect(ctx, x, y, 520, 90, 10);
     ctx.fill();
@@ -897,13 +817,11 @@ async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMem
     ctx.stroke();
 
     if (entry) {
-      // Rank Badge
       ctx.fillStyle = idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : '#d8b4e2';
       ctx.font = 'bold 24px sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(`#${idx + 1}`, x + 18, y + 52);
 
-      // Avatar
       ctx.save();
       ctx.beginPath();
       ctx.arc(x + 95, y + 45, 28, 0, Math.PI * 2);
@@ -918,7 +836,6 @@ async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMem
       }
       ctx.restore();
 
-      // Username
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 20px sans-serif';
       const name = entry.member.user.username.length > 13 
@@ -926,7 +843,6 @@ async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMem
         : entry.member.user.username;
       ctx.fillText(name, x + 140, y + 42);
 
-      // Level & Crystals
       ctx.fillStyle = '#b8a9c9';
       ctx.font = '15px sans-serif';
       ctx.fillText(`Lvl ${entry.doc.level || 1} • ${(entry.doc.balance || 0).toLocaleString()} Crystals`, x + 140, y + 68);
@@ -936,9 +852,9 @@ async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMem
       ctx.textAlign = 'left';
       ctx.fillText(`Slot #${idx + 1} Empty`, x + 25, y + 52);
     }
+
   }
 
-  // Author Personal Footer Strip
   ctx.fillStyle = '#1e1133';
   drawRoundedRect(ctx, 55, 645, 1090, 75, 10);
   ctx.fill();
@@ -947,7 +863,6 @@ async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMem
   drawRoundedRect(ctx, 55, 645, 1090, 75, 10);
   ctx.stroke();
 
-  // Author Avatar
   ctx.save();
   ctx.beginPath();
   ctx.arc(95, 682, 26, 0, Math.PI * 2);
@@ -964,9 +879,9 @@ async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMem
   ctx.textAlign = 'left';
   ctx.fillText(authorMember.user.username, 140, 678);
 
-  ctx.fillStyle = '#f72585';
+    ctx.fillStyle = '#f72585';
   ctx.font = 'bold 16px sans-serif';
-  ctx.fillText(`YOUR RANK: #${authorRank}`, 140, 703);
+  ctx.fillText('YOUR RANK: #' + authorRank, 140, 703);
 
   ctx.fillStyle = '#e9d5ff';
   ctx.textAlign = 'right';
@@ -976,14 +891,12 @@ async function renderLeaderboardCard(topUsers, authorUser, authorRank, authorMem
   return canvas.toBuffer('image/png');
 }
 
-// 2. CELESTIAL PROFILE CODEX CARD
 async function renderProfileCard(userDoc, member, rankStr, isVip) {
   const w = 900;
   const h = 480;
   const canvas = createCanvas(w, h);
   const ctx = canvas.getContext('2d');
 
-  // Background
   const bg = ctx.createLinearGradient(0, 0, w, h);
   bg.addColorStop(0, '#0f0a1c');
   bg.addColorStop(0.5, '#1b1030');
@@ -991,12 +904,10 @@ async function renderProfileCard(userDoc, member, rankStr, isVip) {
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
 
-  // Border
   ctx.strokeStyle = '#c8a2c8';
   ctx.lineWidth = 3;
   ctx.strokeRect(15, 15, w - 30, h - 30);
 
-  // Avatar
   ctx.save();
   ctx.beginPath();
   ctx.arc(140, 140, 70, 0, Math.PI * 2);
@@ -1014,7 +925,6 @@ async function renderProfileCard(userDoc, member, rankStr, isVip) {
   ctx.lineWidth = 4;
   ctx.stroke();
 
-  // Name & Badges
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 32px sans-serif';
   ctx.textAlign = 'left';
@@ -1024,16 +934,15 @@ async function renderProfileCard(userDoc, member, rankStr, isVip) {
   ctx.font = '16px sans-serif';
   ctx.fillText(isVip ? '👑 Cosmic VIP • Sanctuary Patron' : '💠 Mansion Traveler', 240, 140);
 
-  ctx.fillStyle = '#b8a9c9';
+    ctx.fillStyle = '#b8a9c9';
   ctx.font = '16px sans-serif';
   ctx.fillText(`Title: ${userDoc.equippedRole || 'Default Prism'}  •  Global Rank: ${rankStr}`, 240, 168);
 
-  // Stats Grid (Level, Wallet, Bank, Spouse)
   const stats = [
     { label: 'ATTUNEMENT LEVEL', val: `Level ${userDoc.level || 1} (${userDoc.exp || 0} XP)` },
     { label: 'LIQUID CRYSTALS', val: `${(userDoc.balance || 0).toLocaleString()} Crystals` },
-    { label: 'BANK VAULT', val: `${(userDoc.bank || 0).toLocaleString()} Crystals` },
-    { label: 'ROMANTIC BOND', val: userDoc.spouseId ? `Married` : userDoc.datingPartnerId ? `Dating` : 'Single & Radiant' }
+    { label: 'ROMANTIC STATUS', val: userDoc.spouseId ? 'Married' : userDoc.datingPartnerId ? 'Dating' : 'Single & Radiant' },
+    { label: 'ANONYMOUS USES', val: `${userDoc.anonymousCount || 0} / 3 Sent` }
   ];
 
   stats.forEach((s, idx) => {
@@ -1063,14 +972,12 @@ async function renderProfileCard(userDoc, member, rankStr, isVip) {
   return canvas.toBuffer('image/png');
 }
 
-// 3. BOTANICAL NURSERY PLOT CARD
 async function renderPlantsCard(userDoc, username) {
   const w = 800;
   const h = 420;
   const canvas = createCanvas(w, h);
   const ctx = canvas.getContext('2d');
 
-  // Background
   const bg = ctx.createLinearGradient(0, 0, w, h);
   bg.addColorStop(0, '#0a1410');
   bg.addColorStop(0.5, '#10241c');
@@ -1082,7 +989,6 @@ async function renderPlantsCard(userDoc, username) {
   ctx.lineWidth = 3;
   ctx.strokeRect(15, 15, w - 30, h - 30);
 
-  // Title
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 28px sans-serif';
   ctx.textAlign = 'center';
@@ -1101,13 +1007,11 @@ async function renderPlantsCard(userDoc, username) {
     ctx.font = 'bold 24px sans-serif';
     ctx.fillText(`🌱 Active Plant: ${pName}`, w / 2, 120);
 
-    // Progress Bar Track
     const barX = 150, barY = 160, barW = 500, barH = 24;
     ctx.fillStyle = '#1e382d';
     drawRoundedRect(ctx, barX, barY, barW, barH, 12);
     ctx.fill();
 
-    // Progress Bar Fill
     const fillW = Math.max(24, (barW * stage) / 5);
     ctx.fillStyle = '#2ec4b6';
     drawRoundedRect(ctx, barX, barY, fillW, barH, 12);
@@ -1117,7 +1021,6 @@ async function renderPlantsCard(userDoc, username) {
     ctx.font = 'bold 16px sans-serif';
     ctx.fillText(`Stage ${stage} / 5`, w / 2, 215);
 
-    // Info Pills
     const lastW = userDoc.activePlant.lastWatered ? new Date(userDoc.activePlant.lastWatered).toLocaleDateString() : 'Never';
     const fert = userDoc.activePlant.fertilised ? 'Yes (Maxed)' : 'No (Use cry!fertilise)';
 
@@ -1125,7 +1028,6 @@ async function renderPlantsCard(userDoc, username) {
     ctx.font = '16px sans-serif';
     ctx.fillText(`💧 Last Watered: ${lastW}   •   🧪 Fertilised: ${fert}`, w / 2, 260);
 
-    // Historical Vault Tally
     const harvestCount = userDoc.harvestedPlants ? userDoc.harvestedPlants.length : 0;
     ctx.fillStyle = '#ffd166';
     ctx.font = '16px sans-serif';
@@ -1136,7 +1038,7 @@ async function renderPlantsCard(userDoc, username) {
 }
 
 // ==========================================
-// 4. WELCOME & GOODBYE LISTENERS
+// 4. GUILD MEMBER EVENT LISTENERS
 // ==========================================
 client.on('guildMemberAdd', async (member) => {
   try {
@@ -1227,17 +1129,16 @@ client.on('guildMemberRemove', async (member) => {
 });
 
 // ==========================================
-// REACTION ROLE LISTENERS (WITH PERSISTENT PARTIALS)
+// 5. REACTION ROLE LISTENERS
 // ==========================================
 client.on('messageReactionAdd', async (reaction, user) => {
   if (user.bot) return;
 
-  // Fetch partials if the reaction or message was created prior to bot launch
   if (reaction.partial) {
-    try { await reaction.fetch(); } catch (err) { return; }
+    try { await reaction.fetch(); } catch { return; }
   }
   if (reaction.message.partial) {
-    try { await reaction.message.fetch(); } catch (err) { return; }
+    try { await reaction.message.fetch(); } catch { return; }
   }
 
   const roleId = REACTION_ROLES_MAP[reaction.emoji.name];
@@ -1260,10 +1161,10 @@ client.on('messageReactionRemove', async (reaction, user) => {
   if (user.bot) return;
 
   if (reaction.partial) {
-    try { await reaction.fetch(); } catch (err) { return; }
+    try { await reaction.fetch(); } catch { return; }
   }
   if (reaction.message.partial) {
-    try { await reaction.message.fetch(); } catch (err) { return; }
+    try { await reaction.message.fetch(); } catch { return; }
   }
 
   const roleId = REACTION_ROLES_MAP[reaction.emoji.name];
@@ -1283,7 +1184,7 @@ client.on('messageReactionRemove', async (reaction, user) => {
 });
 
 // ==========================================
-// CELESTIAL STARBOARD / HALL OF FAME (5 REACTION TRIGGER)
+// CELESTIAL STARBOARD / HALL OF FAME
 // ==========================================
 client.on('messageReactionAdd', async (reaction, user) => {
   if (user.bot) return;
@@ -1295,8 +1196,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
     try { await reaction.message.fetch(); } catch { return; }
   }
 
-  // Count target reactions: Star, Gem, or custom crystal emoji
-  const validTriggers = ['⭐', '🌟', '😭', 'emoji_51'];
+  const validTriggers = ['⭐', '🌟', '💎', 'emoji_51'];
   const isMatch = validTriggers.includes(reaction.emoji.name) || reaction.emoji.id === '1531598791063638036';
   if (!isMatch) return;
 
@@ -1324,47 +1224,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 });
 
 // ==========================================
-// 6. READY & STATUS
-// ==========================================
-client.once('ready', () => {
-  console.log(`✨ CrystalBot is online as ${client.user.tag}`);
-  console.log(`💎 All engines loaded: Market, Wardrobe, Games, Economy, Love, Nursery`);
-});
-
-  // Daily Birthday Checker (Runs every 30 minutes)
-  setInterval(async () => {
-    const now = new Date();
-    const currentDay = now.getDate();
-    const currentMonth = now.getMonth() + 1; // 1-12
-    const currentYear = now.getFullYear();
-
-    const birthdayUsers = await User.find({
-      'birthday.day': currentDay,
-      'birthday.month': currentMonth,
-      $or: [{ lastBirthdayYear: { $ne: currentYear } }, { lastBirthdayYear: null }]
-    });
-
-    for (const doc of birthdayUsers) {
-      doc.balance += 500;
-      doc.lastBirthdayYear = currentYear;
-      await doc.save();
-
-      // Find first valid guild to announce
-      for (const guild of client.guilds.cache.values()) {
-        const member = guild.members.cache.get(doc.userId);
-        if (member) {
-          const defaultChannel = guild.systemChannel || guild.channels.cache.find(c => c.isTextBased() && c.permissionsFor(guild.members.me).has('SendMessages'));
-          if (defaultChannel) {
-            defaultChannel.send(`🎂 **CELESTIAL BIRTHDAY BLESSING!** Happy Birthday <@${doc.userId}>! ✨ May your year shine brilliant across the cosmos. (+500 ${cryCoin} deposited!)`);
-          }
-          break;
-        }
-      }
-    }
-  }, 1800000);
-
-// ==========================================
-// SNIPE LISTENER (Captures last deleted message)
+// SNIPE LISTENER
 // ==========================================
 client.on('messageDelete', async (message) => {
   if (!message || message.partial || message.author?.bot || !message.guild) return;
@@ -1379,15 +1239,50 @@ client.on('messageDelete', async (message) => {
 });
 
 // ==========================================
+// 6. READY & STATUS
+// ==========================================
+client.once('ready', () => {
+  console.log(`✨ CrystalBot is online as ${client.user.tag}`);
+  console.log(`💎 All engines loaded: Market, Wardrobe, Games, Economy, Love, Nursery`);
+
+  setInterval(async () => {
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const birthdayUsers = await User.find({
+      'birthday.day': currentDay,
+      'birthday.month': currentMonth,
+      $or: [{ lastBirthdayYear: { $ne: currentYear } }, { lastBirthdayYear: null }]
+    });
+
+    for (const doc of birthdayUsers) {
+      doc.balance += 500;
+      doc.lastBirthdayYear = currentYear;
+      await doc.save();
+
+      for (const guild of client.guilds.cache.values()) {
+        const member = guild.members.cache.get(doc.userId);
+        if (member) {
+          const defaultChannel = guild.systemChannel || guild.channels.cache.find(c => c.isTextBased() && c.permissionsFor(guild.members.me).has('SendMessages'));
+          if (defaultChannel) {
+            defaultChannel.send(`🎂 **CELESTIAL BIRTHDAY BLESSING!** Happy Birthday <@${doc.userId}>! ✨ May your year shine brilliant across the cosmos. (+500 ${cryCoin} deposited!)`);
+          }
+          break;
+        }
+      }
+    }
+  }, 1800000);
+});
+
+// ==========================================
 // 7. MESSAGE DISPATCHER & COMMAND ROUTING
 // ==========================================
 client.on('messageCreate', async message => {
   if (message.author.bot || !message.guild) return;
 
-  // ------------------------------------------
   // AFK AUTO-RESPONSE & CLEAR ENGINE
-  // ------------------------------------------
-  // 1. Remove AFK if author speaks
   if (global.afkUsers.has(message.author.id)) {
     const afkData = global.afkUsers.get(message.author.id);
     global.afkUsers.delete(message.author.id);
@@ -1395,7 +1290,6 @@ client.on('messageCreate', async message => {
     message.reply(`✨ Welcome back, <@${message.author.id}>! I removed your AFK status. You drifted away for **${timeAway}**.`).then(m => setTimeout(() => m.delete().catch(() => {}), 5000));
   }
 
-  // 2. Check if a mentioned user is AFK
   if (message.mentions.users.size > 0) {
     message.mentions.users.forEach(u => {
       if (global.afkUsers.has(u.id)) {
@@ -1412,13 +1306,13 @@ client.on('messageCreate', async message => {
     setTimeout(() => xpCooldowns.delete(message.author.id), 30000);
 
     const user = await getUser(message.author.id);
-    const earnedXp = Math.floor(Math.random() * 16) + 25; // 25-40 XP
+    const earnedXp = Math.floor(Math.random() * 16) + 25;
     await addExperience(user, earnedXp, message);
     await user.save();
   }
 
-  // Easter Egg Triggers
-  if (message.content.toLowerCase().includes('sarah')) {
+  // Easter Egg Triggers (Only for casual chat, commands bypass)
+  if (!PREFIX_REGEX.test(message.content) && message.content.toLowerCase().includes('sarah')) {
     return message.channel.send("*🥹 Ikrr Sarah is so peak, you are peak too twin...*");
   }
 
@@ -1435,12 +1329,14 @@ client.on('messageCreate', async message => {
 
   try {
     const isVip = message.author.id === VIP_USER_ID;
+    const isStaff = message.member.permissions.has(PermissionFlagsBits.Administrator) ||
+                    message.member.permissions.has(PermissionFlagsBits.ModerateMembers) ||
+                    message.member.permissions.has(PermissionFlagsBits.ManageMessages) ||
+                    isVip;
 
     // ==========================================
     // MODULE: UTILITY
     // ==========================================
-
-    // FAST COMMAND LIST (cry!cmds)
     if (command === 'cmds') {
       const cmdsEmbed = new EmbedBuilder()
         .setTitle('✧ CRYSTALBOT COMMAND REGISTRY ✧')
@@ -1454,9 +1350,9 @@ client.on('messageCreate', async message => {
           `**💍 Romance:** \`propose\`, \`marry\`, \`divorce\`, \`partner\`, \`love\`, \`ship\`\n` +
           `**✨ Social:** \`slap\`, \`bonk\`, \`poke\`, \`punch\`, \`pinch\`, \`bite\`, \`hug\`, \`kiss\`, \`pat\`, \`highfive\`, \`dance\`, \`laugh\`, \`blush\`, \`twerk\`\n` +
           `**🔮 Identity & Fun:** \`gay\`, \`lesbian\`, \`rate\`, \`cf\`, \`dice\`, \`crystalstorm\`, \`pickup\`, \`roast\`, \`anonymous\`\n` +
-          `**🛡️ Moderation:** \`ban\`, \`unban\`, \`timeout\`, \`untimeout\`, \`purge\`, \`warn\`, \`warnings\`, \`clearwarns\`, \`lock\`, \`unlock\`\n` +
+          `**🛡️ Moderation:** \`ban\`, \`unban\`, \`mute\` (\`timeout\`), \`unmute\` (\`untimeout\`), \`purge\`, \`warn\`, \`warnings\`, \`clearwarns\`, \`lock\`, \`unlock\`\n` +
           `**📅 Birthday & AFK:** \`setbirthday\`, \`updatebirthday\`, \`removebirthday\`, \`birthdays\`, \`afk\`, \`snipe\`\n` +
-          `**ℹ️ Info:** \`userinfo\`, \`serverinfo\`\n`
+          `**ℹ️ Info:** \`userinfo\`, \`serverinfo\`\n` +
           `**🛡️ Admin:** \`setup-roles\`, \`poll\`, \`ac\`, \`rc\`\n` +
           `**⚙️ Utility:** \`profile\`, \`rank\`, \`cd\`, \`cmds\`, \`help\`\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
@@ -1467,7 +1363,6 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [cmdsEmbed] });
     }
 
-    // COOLDOWN DASHBOARD (cry!cd)
     if (command === 'cd') {
       const user = await getUser(message.author.id);
 
@@ -1514,7 +1409,6 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [cdEmbed] });
     }
 
-        // MULTI-PAGE INTERACTIVE HELP MENU (cry!help)
     if (command === 'help') {
       const getHelpPage = (cat) => {
         const embed = new EmbedBuilder().setColor('#2d0c45');
@@ -1533,7 +1427,7 @@ client.on('messageCreate', async message => {
               { name: '♟️ Games & Gambling', value: 'Tactical chess duels, slots, and Mansion Imposter.', inline: true },
               { name: '💍 Romance & Social', value: 'Dating, starlight weddings, and CDN interactions.', inline: true },
               { name: '🔮 Identity & Fun', value: 'Gay/lesbian gauges, crystalstorms, and roasts.', inline: true },
-              { name: '🛡️ Moderation', value: 'Bans, timeouts, purges, warnings, and channel locks.', inline: true },
+              { name: '🛡️ Moderation', value: 'Bans, mutes, purges, warnings, and channel locks.', inline: true },
               { name: '📅 Community & Utility', value: 'Birthdays, AFK status, snipes, and server info.', inline: true },
               { name: '⭐ Starboard', value: '5-reaction auto-immortalization hall of fame.', inline: true }
             );
@@ -1626,8 +1520,8 @@ client.on('messageCreate', async message => {
               "*(Requires Staff Permissions or VIP)*\n\n" +
               "`cry!ban @user [reason]` — Permanently ban a member.\n" +
               "`cry!unban <userId>` — Lift a ban using user ID.\n" +
-              "`cry!timeout @user <10m/1h/1d> [reason]` — Mute a member natively.\n" +
-              "`cry!untimeout @user` — Remove a timeout early.\n" +
+              "`cry!mute @user <10m/1h/1d> [reason]` (or `timeout`) — Mute a member natively.\n" +
+              "`cry!unmute @user` (or `untimeout`) — Remove a mute/timeout early.\n" +
               "`cry!purge <1-100>` — Bulk clear messages cleanly.\n" +
               "`cry!warn @user <reason>` — Log an infraction to the database.\n" +
               "`cry!warnings @user` — Check a user's infraction history.\n" +
@@ -1644,69 +1538,39 @@ client.on('messageCreate', async message => {
         return embed;
       };
 
-      // Interactive Buttons Setup (2 neat rows)
-      const row1 = new ActionRowBuilder().addComponents(
+      const helpRow1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('help_econ').setLabel('Economy').setStyle(ButtonStyle.Primary).setEmoji('🪙'),
         new ButtonBuilder().setCustomId('help_market').setLabel('Market').setStyle(ButtonStyle.Primary).setEmoji('🛍️'),
         new ButtonBuilder().setCustomId('help_nursery').setLabel('Nursery').setStyle(ButtonStyle.Primary).setEmoji('🌱'),
         new ButtonBuilder().setCustomId('help_games').setLabel('Games').setStyle(ButtonStyle.Primary).setEmoji('♟️')
       );
 
-      const row2 = new ActionRowBuilder().addComponents(
+      const helpRow2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('help_romance').setLabel('Romance').setStyle(ButtonStyle.Secondary).setEmoji('💍'),
         new ButtonBuilder().setCustomId('help_fun').setLabel('Fun & AFK').setStyle(ButtonStyle.Secondary).setEmoji('🔮'),
         new ButtonBuilder().setCustomId('help_birthday').setLabel('Birthday').setStyle(ButtonStyle.Success).setEmoji('🎂'),
         new ButtonBuilder().setCustomId('help_mod').setLabel('Moderation').setStyle(ButtonStyle.Danger).setEmoji('🛡️')
       );
 
-      const helpMsg = await message.reply({ embeds: [getHelpPage('landing')], components: [row1, row2] });
+      const helpMsg = await message.reply({ embeds: [getHelpPage('landing')], components: [helpRow1, helpRow2] });
       const collector = helpMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
 
       collector.on('collect', async i => {
         if (i.user.id !== message.author.id) return i.reply({ content: "Run cry!help to open your own guide!", ephemeral: true });
         const cat = i.customId.replace('help_', '');
-        await i.update({ embeds: [getHelpPage(cat)], components: [row1, row2] });
+        await i.update({ embeds: [getHelpPage(cat)], components: [helpRow1, helpRow2] });
       });
 
       collector.on('end', () => {
-        row1.components.forEach(b => b.setDisabled(true));
-        row2.components.forEach(b => b.setDisabled(true));
-        helpMsg.edit({ components: [row1, row2] }).catch(() => {});
-      });
-    
-
-      const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('help_econ').setLabel('Economy').setStyle(ButtonStyle.Primary).setEmoji('🪙'),
-        new ButtonBuilder().setCustomId('help_market').setLabel('Market').setStyle(ButtonStyle.Primary).setEmoji('🛍️'),
-        new ButtonBuilder().setCustomId('help_nursery').setLabel('Nursery').setStyle(ButtonStyle.Primary).setEmoji('🌱')
-      );
-
-      const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('help_games').setLabel('Games').setStyle(ButtonStyle.Secondary).setEmoji('♟️'),
-        new ButtonBuilder().setCustomId('help_romance').setLabel('Romance').setStyle(ButtonStyle.Secondary).setEmoji('💍'),
-        new ButtonBuilder().setCustomId('help_fun').setLabel('Fun').setStyle(ButtonStyle.Secondary).setEmoji('🔮'),
-        new ButtonBuilder().setCustomId('help_admin').setLabel('Admin').setStyle(ButtonStyle.Danger).setEmoji('🛡️')
-      );
-
-      const helpMsg = await message.reply({ embeds: [getHelpPage('landing')], components: [row1, row2] });
-      const collector = helpMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
-
-      collector.on('collect', async i => {
-        if (i.user.id !== message.author.id) return i.reply({ content: "Run cry!help to open your own guide!", ephemeral: true });
-        const cat = i.customId.replace('help_', '');
-        await i.update({ embeds: [getHelpPage(cat)], components: [row1, row2] });
-      });
-
-      collector.on('end', () => {
-        row1.components.forEach(b => b.setDisabled(true));
-        row2.components.forEach(b => b.setDisabled(true));
-        helpMsg.edit({ components: [row1, row2] }).catch(() => {});
+        helpRow1.components.forEach(b => b.setDisabled(true));
+        helpRow2.components.forEach(b => b.setDisabled(true));
+        helpMsg.edit({ components: [helpRow1, helpRow2] }).catch(() => {});
       });
       return;
     }
 
     // ==========================================
-    // PROFILE (CANVAS GRAPHIC CARD)
+    // MODULE: PROFILE & RANK CARDS
     // ==========================================
     if (command === 'profile' || command === 'p' || command === 'me') {
       const cd = checkCooldown(`prof_${message.author.id}`, 60000);
@@ -1726,9 +1590,6 @@ client.on('messageCreate', async message => {
       return message.reply({ files: [attachment] });
     }
 
-    // ==========================================
-    // RANK & LB (TOP 10 CANVAS CARD)
-    // ==========================================
     if (command === 'rank' || command === 'lb' || command === 'leaderboard') {
       const cd = checkCooldown(`lb_${message.author.id}`, 60000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Wait **${cd}s**.`);
@@ -1757,8 +1618,6 @@ client.on('messageCreate', async message => {
     // ==========================================
     // MODULE: ECONOMY
     // ==========================================
-
-    // WORK
     if (command === 'work') {
       const user = await getUser(message.author.id);
 
@@ -1772,7 +1631,7 @@ client.on('messageCreate', async message => {
       const cd = checkCooldown(`work_${message.author.id}`, 180000);
       if (cd > 0) return message.reply(`⏳ Take a breather! The crystal mines reopen in **${cd}s**.`);
 
-      const earned = Math.floor(Math.random() * 61) + 20; // 20 to 80
+      const earned = Math.floor(Math.random() * 61) + 20;
       user.balance += earned;
       user.workAttempts += 1;
       await addExperience(user, 15, message);
@@ -1785,10 +1644,9 @@ client.on('messageCreate', async message => {
       }
 
       await user.save();
-      return message.reply(`⛏️ You mined through the crystal caverns and harvested **${earned} ${cryCoin}**! *(Shift ${user.workAttempts}/40)*${extra}`);
+      return message.reply(`⛏️ You mined through the crystal caverns and harvested **${earned}${cryCoin}**! *(Shift ${user.workAttempts}/40)*${extra}`);
     }
 
-    // BALANCE (cry!bal, cry!balance)
     if (command === 'bal' || command === 'balance') {
       const cd = checkCooldown(`bal_${message.author.id}`, 60000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Wait **${cd}s**.`);
@@ -1797,23 +1655,20 @@ client.on('messageCreate', async message => {
       const user = await getUser(target.id);
 
       const balEmbed = new EmbedBuilder()
-        .setTitle('✧ CRYSTAL VAULT ARCHIVE ✧')
+        .setTitle('✧ CRYSTAL PURSE ✧')
         .setColor('#2d0c45')
         .setThumbnail(target.displayAvatarURL({ dynamic: true }))
         .setDescription(
-          `**Account Holder:** <@${target.id}>\n` +
+          `**Holder:** <@${target.id}>\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `👛 **Liquid Crystals:** \`${user.balance.toLocaleString()}\` ${cryCoin}\n` +
-          `🏛️ **Vault Stash:** \`${user.bank.toLocaleString()}\` ${cryCoin}\n` +
-          `💎 **Net Worth:** \`${(user.balance + user.bank).toLocaleString()}\` ${cryCoin}\n` +
+          `💎 **Balance:** \`${user.balance.toLocaleString()}\` ${cryCoin}\n` +
           `━━━━━━━━━━━━━━━━━━━━━━━`
         )
-        .setFooter({ text: 'Crystal Financial Ledger • Verified Attunement' });
+        .setFooter({ text: 'Liquid Astral Crystals' });
 
       return message.reply({ embeds: [balEmbed] });
     }
 
-    // DAILY
     if (command === 'daily') {
       const user = await getUser(message.author.id);
       if (user.dailyLastClaimed) {
@@ -1832,7 +1687,6 @@ client.on('messageCreate', async message => {
       return message.reply(`🎁 **ASTRAL ALLOWANCE!** The cosmos gifted you **667 ${cryCoin}**!`);
     }
 
-    // TRANSFERS (cry!pay, cry!send)
     if (command === 'pay' || command === 'send') {
       const cd = checkCooldown(`pay_${message.author.id}`, 60000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Transfer frequency restricted. Wait **${cd}s**.`);
@@ -1846,7 +1700,7 @@ client.on('messageCreate', async message => {
       if (isNaN(amt) || amt <= 0) return message.reply("⚠️ Specify a valid positive crystal amount.");
 
       const sender = await getUser(message.author.id);
-      if (sender.balance < amt) return message.reply(`❌ Insufficient funds! Current Balance: **${sender.balance} ${cryCoin}**`);
+      if (sender.balance < amt) return message.reply(`❌ Insufficient funds! Current Balance: **${sender.balance}${cryCoin}**`);
 
       const receiver = await getUser(target.id);
       sender.balance -= amt;
@@ -1855,14 +1709,12 @@ client.on('messageCreate', async message => {
       await sender.save();
       await receiver.save();
 
-      return message.reply(`✨ Transferred **${amt.toLocaleString()} ${cryCoin}** to <@${target.id}>!`);
+      return message.reply(`✨ Transferred **${amt.toLocaleString()}${cryCoin}** to <@${target.id}>!`);
     }
-    
+
     // ==========================================
     // MODULE: MARKET & WARDROBE
     // ==========================================
-
-    // SHOP
     if (command === 'shop') {
       let page = 1;
       const renderShop = (p) => {
@@ -1925,7 +1777,6 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // BUY ITEM
     if (command === 'buy') {
       const itemId = (args[0] || '').toLowerCase();
       const qty = parseInt(args[1], 10) || 1;
@@ -1938,7 +1789,7 @@ client.on('messageCreate', async message => {
       const user = await getUser(message.author.id);
 
       if (user.balance < totalCost && !isVip) {
-        return message.reply(`❌ You need **${totalCost.toLocaleString()} ${cryCoin}** to purchase this!`);
+        return message.reply(`❌ You need **${totalCost.toLocaleString()}${cryCoin}** to purchase this!`);
       }
 
       if (!isVip) user.balance -= totalCost;
@@ -1946,10 +1797,9 @@ client.on('messageCreate', async message => {
       user.inventory.set(itemId, currentQty + qty);
 
       await user.save();
-      return message.reply(`✨ Purchased **${qty}x ${item.name}** for **${totalCost.toLocaleString()} ${cryCoin}**!`);
+      return message.reply(`✨ Purchased **${qty}x${item.name}** for **${totalCost.toLocaleString()}${cryCoin}**!`);
     }
 
-    // SELL ITEM
     if (command === 'sell') {
       const itemId = (args[0] || '').toLowerCase();
       const qty = parseInt(args[1], 10) || 1;
@@ -1961,7 +1811,7 @@ client.on('messageCreate', async message => {
       const user = await getUser(message.author.id);
       const currentQty = user.inventory.get(itemId) || 0;
 
-      if (currentQty < qty) return message.reply(`❌ You only own **${currentQty}x ${item.name}**!`);
+      if (currentQty < qty) return message.reply(`❌ You only own **${currentQty}x${item.name}**!`);
 
       const refund = item.sell * qty;
       user.balance += refund;
@@ -1969,10 +1819,9 @@ client.on('messageCreate', async message => {
       else user.inventory.set(itemId, currentQty - qty);
 
       await user.save();
-      return message.reply(`💰 Sold **${qty}x ${item.name}** for **${refund.toLocaleString()} ${cryCoin}** (50% value)!`);
+      return message.reply(`💰 Sold **${qty}x${item.name}** for **${refund.toLocaleString()}${cryCoin}** (50% value)!`);
     }
 
-    // INVENTORY (cry!inv, cry!inventory)
     if (command === 'inv' || command === 'inventory') {
       const user = await getUser(message.author.id);
       let desc = '';
@@ -2004,7 +1853,6 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [invEmbed] });
     }
 
-    // ROLESHOP
     if (command === 'roleshop') {
       let rPage = 1;
       const totalPages = Math.ceil(ROLE_CATALOG.length / 5);
@@ -2021,7 +1869,7 @@ client.on('messageCreate', async message => {
           .setTitle(`✧ THE CRYSTAL ATRIUM • WARDROBE (${p}/${totalPages}) ✧`)
           .setColor('#f72585')
           .setDescription(lines)
-          .setFooter({ text: `Page ${p} of ${totalPages} • Use cry!buyrole <id> to unlock and equip` });
+          .setFooter({ text: `Page ${p} of${totalPages} • Use cry!buyrole <id> to unlock and equip` });
       };
 
       const row = new ActionRowBuilder().addComponents(
@@ -2046,7 +1894,6 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // BUY ROLE
     if (command === 'buyrole') {
       const rId = (args[0] || '').toLowerCase();
       const roleItem = ROLE_CATALOG.find(r => r.id === rId);
@@ -2059,7 +1906,7 @@ client.on('messageCreate', async message => {
       }
 
       if (user.balance < roleItem.price && !isVip) {
-        return message.reply(`❌ You need **${roleItem.price.toLocaleString()} ${cryCoin}** to unlock this role!`);
+        return message.reply(`❌ You need **${roleItem.price.toLocaleString()}${cryCoin}** to unlock this role!`);
       }
 
       if (!isVip) user.balance -= roleItem.price;
@@ -2077,14 +1924,10 @@ client.on('messageCreate', async message => {
       return message.reply(`✨ Successfully unlocked and equipped the **${roleItem.name}** title!`);
     }
 
-    // ==========================================
-    // EQUIP ROLE (FIXED CASE MATCHING & ROLE SYNC)
-    // ==========================================
     if (command === 'equip') {
       const query = args.join(' ').toLowerCase().trim();
       if (!query) return message.reply("⚠️ Specify a valid role: `cry!equip <id or name>`");
 
-      // Match by ID or Name
       const roleItem = ROLE_CATALOG.find(r => r.id.toLowerCase() === query || r.name.toLowerCase() === query);
       if (!roleItem) return message.reply("⚠️ Role not found in catalogue! Check `cry!roleshop`.");
 
@@ -2095,7 +1938,6 @@ client.on('messageCreate', async message => {
         return message.reply(`❌ You do not own the **${roleItem.name}** title! Buy it in \`cry!roleshop\`.`);
       }
 
-      // Strip any other existing vanity roles from member
       try {
         const allVanityIds = ROLE_CATALOG.map(r => r.roleId);
         await message.member.roles.remove(allVanityIds);
@@ -2103,7 +1945,6 @@ client.on('messageCreate', async message => {
 
       user.equippedRole = roleItem.name;
 
-      // Assign the matching guild role
       let roleNotice = '';
       try {
         const targetGuildRole = message.guild.roles.cache.get(roleItem.roleId);
@@ -2119,9 +1960,6 @@ client.on('messageCreate', async message => {
       return message.reply(`✨ Equipped **${roleItem.name}** as your active profile title${roleNotice}`);
     }
 
-    // ==========================================
-    // UNEQUIP ROLE (STRIPS GUILD ROLE PROPERLY)
-    // ==========================================
     if (command === 'unequip') {
       const user = await getUser(message.author.id);
       user.equippedRole = 'Default Prism';
@@ -2135,7 +1973,6 @@ client.on('messageCreate', async message => {
       return message.reply("✨ Unequipped your active title and removed server vanity roles! Reset to Default Prism.");
     }
 
-    // MY ROLES
     if (command === 'myroles') {
       const user = await getUser(message.author.id);
       const list = user.rolesOwned.map(r => `• **${r}**`).join('\n') || '• Default Prism';
@@ -2152,8 +1989,6 @@ client.on('messageCreate', async message => {
     // ==========================================
     // MODULE: BOTANICAL NURSERY
     // ==========================================
-
-    // SOW SEED
     if (command === 'sow') {
       const user = await getUser(message.author.id);
       if (user.activePlant) {
@@ -2192,7 +2027,6 @@ client.on('messageCreate', async message => {
       return message.reply(`🌱 Planted a **${seedItem.plantName}** in your sanctuary!\n\n📜 **Botanical Insight:**\n*"${factList[0]}"*`);
     }
 
-    // WATER PLANT
     if (command === 'water') {
       const user = await getUser(message.author.id);
       if (!user.activePlant) return message.reply("🥀 You don't have any plants growing! Use `cry!sow <seed_id>`.");
@@ -2224,7 +2058,6 @@ client.on('messageCreate', async message => {
       return message.reply(`💧 You watered your **${user.activePlant.plantName}**! Growth reached **Stage ${user.activePlant.stage}/5**!\n\n📜 **Botanical Discovery:**\n*"${fact}"*`);
     }
 
-    // FERTILISE PLANT
     if (command === 'fertilise' || command === 'fertilize') {
       const user = await getUser(message.author.id);
       if (!user.activePlant) return message.reply("🥀 You don't have an active plant!");
@@ -2245,7 +2078,6 @@ client.on('messageCreate', async message => {
       return message.reply(`🧪 Applied Cocopeat! Your **${user.activePlant.plantName}** rapidly surged to **Stage ${user.activePlant.stage}/5**!`);
     }
 
-    // HARVEST PLANT (WITH QUIZ)
     if (command === 'harvest') {
       const user = await getUser(message.author.id);
       if (!user.activePlant) return message.reply("🥀 You don't have any plants growing!");
@@ -2284,7 +2116,7 @@ client.on('messageCreate', async message => {
           user.activePlant = null;
           await addExperience(user, 50, message);
           await user.save();
-          return i.reply(`🎉 **HARVEST TRIUMPH!** Correct! You harvested your **${pName}** and reaped **+${reward} ${cryCoin}**!`);
+          return i.reply(`🎉 **HARVEST TRIUMPH!** Correct! You harvested your **${pName}** and reaped **+${reward}${cryCoin}**!`);
         } else {
           user.activePlant.stage = Math.max(1, user.activePlant.stage - 2);
           await user.save();
@@ -2301,9 +2133,6 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // ==========================================
-    // PLANTS (CANVAS GREENHOUSE CARD)
-    // ==========================================
     if (command === 'plants') {
       const user = await getUser(message.author.id);
       const plantsBuffer = await renderPlantsCard(user, message.author.username);
@@ -2315,8 +2144,6 @@ client.on('messageCreate', async message => {
     // ==========================================
     // MODULE: GAMES & GAMBLING
     // ==========================================
-
-    // CHESS DUEL
     if (command === 'chessduel') {
       const opponent = message.mentions.users.first();
       const wager = parseInt(args[1], 10) || 0;
@@ -2332,13 +2159,13 @@ client.on('messageCreate', async message => {
       const p1 = await getUser(message.author.id);
       const p2 = await getUser(opponent.id);
 
-      if (p1.balance < wager) return message.reply(`❌ You don't have enough crystals for a wager of **${wager} ${cryCoin}**!`);
+      if (p1.balance < wager) return message.reply(`❌ You don't have enough crystals for a wager of **${wager}${cryCoin}**!`);
       if (p2.balance < wager) return message.reply(`❌ <@${opponent.id}> doesn't have enough crystals!`);
 
       const duelEmbed = new EmbedBuilder()
         .setTitle('♟️ GRANDMASTER\'S TACTICAL DUEL')
         .setColor('#2d0c45')
-        .setDescription(`<@${message.author.id}> challenged <@${opponent.id}> to a tactical chess match!\n**Pot:** **${wager * 2} ${cryCoin}**\n\nChoose your playstyle by clicking a button below!`)
+        .setDescription(`<@${message.author.id}> challenged <@${opponent.id}> to a tactical chess match!\n**Pot:** **${wager * 2}${cryCoin}**\n\nChoose your playstyle by clicking a button below!`)
         .setFooter({ text: "All-Out Attack beats Squeeze | Defense beats Attack | Squeeze beats Defense" });
 
       const row = new ActionRowBuilder().addComponents(
@@ -2419,7 +2246,6 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // MANSION IMPOSTER: COMPREHENSIVE GUIDE
     if (command === 'imposterlearn') {
       let page = 1;
       const getLearnEmbed = (p) => {
@@ -2492,7 +2318,6 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // MULTI-ROUND MANSION IMPOSTER
     if (command === 'imposter') {
       const cd = checkCooldown('imposter_global', 600000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Mansion corridors are sealed under investigation! Server Cooldown: **${formatDuration(cd)}**.`);
@@ -2762,7 +2587,6 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // BEG
     if (command === 'beg') {
       const user = await getUser(message.author.id);
 
@@ -2787,7 +2611,7 @@ client.on('messageCreate', async message => {
           "A traveler told you to 'invest in your mindset' and gave zero crystals."
         ];
         await user.save();
-        return message.reply(`💀 **Tough Luck!** ${trollQuotes[Math.floor(Math.random() * trollQuotes.length)]}\n*(Earned: **0 ${cryCoin}** | Attempt ${user.begAttempts}/20)*`);
+        return message.reply(`💀 **Tough Luck!** ${trollQuotes[Math.floor(Math.random() * trollQuotes.length)]}\n*(Earned: **0 ${cryCoin}** \vert{} Attempt${user.begAttempts}/20)*`);
       }
 
       user.balance += roll;
@@ -2795,13 +2619,12 @@ client.on('messageCreate', async message => {
       await user.save();
 
       if (roll >= 60) {
-        return message.reply(`🗣️ **What in the Skibidi Ohio?!** A crypto-bard tossed you **${roll} ${cryCoin}** for reciting pure brainrot! *(Attempt ${user.begAttempts}/20)*`);
+        return message.reply(`🗣️ **What in the Skibidi Ohio?!** A crypto-bard tossed you **${roll}${cryCoin}** for reciting pure brainrot! *(Attempt ${user.begAttempts}/20)*`);
       }
 
-      return message.reply(`🤲 A kind passerby tossed **${roll} ${cryCoin}** into your hands! *(Attempt ${user.begAttempts}/20)*`);
+      return message.reply(`🤲 A kind passerby tossed **${roll}${cryCoin}** into your hands! *(Attempt ${user.begAttempts}/20)*`);
     }
 
-    // SLOTS
     if (command === 'slots') {
       const bet = parseInt(args[0], 10);
       if (isNaN(bet) || bet <= 0) return message.reply("⚠️ Specify a valid bet: `cry!slots <bet>`");
@@ -2836,13 +2659,12 @@ client.on('messageCreate', async message => {
       const slotsEmbed = new EmbedBuilder()
         .setTitle(`🎰 CRYSTAL SLOTS • ${title}`)
         .setColor('#f72585')
-        .setDescription(`[ ${s1} | ${s2} | ${s3} ]\n\n${winAmt > 0 ? `You won **+${winAmt.toLocaleString()}** ${cryCoin}!` : `You lost **-${bet.toLocaleString()}** ${cryCoin}.`}`)
+        .setDescription(`[ ${s1} \vert{}${s2} | ${s3} ]\n\n${winAmt > 0 ? `You won **+${winAmt.toLocaleString()}** ${cryCoin}!` : `You lost **-${bet.toLocaleString()}** ${cryCoin}.`}`)
         .setFooter({ text: `Current Balance: ${user.balance.toLocaleString()} crystals` });
 
       return message.reply({ embeds: [slotsEmbed] });
     }
 
-    // RPS (ROCK PAPER SCISSORS)
     if (command === 'rockpaperscissors' || command === 'rps') {
       const bet = parseInt(args[0], 10);
       const choice = (args[1] || '').toLowerCase();
@@ -2872,15 +2694,14 @@ client.on('messageCreate', async message => {
       if (won) {
         user.balance += bet;
         await user.save();
-        return message.reply(`🎉 You chose **${playerChoice}** and beat my **${botChoice}**! Won **+${bet.toLocaleString()} ${cryCoin}**!`);
+        return message.reply(`🎉 You chose **${playerChoice}** and beat my **${botChoice}**! Won **+${bet.toLocaleString()}${cryCoin}**!`);
       } else {
         user.balance -= bet;
         await user.save();
-        return message.reply(`💀 I chose **${botChoice}** and beat your **${playerChoice}**! Lost **-${bet.toLocaleString()} ${cryCoin}**.`);
+        return message.reply(`💀 I chose **${botChoice}** and beat your **${playerChoice}**! Lost **-${bet.toLocaleString()}${cryCoin}**.`);
       }
     }
 
-    // TRIVIA
     if (command === 'trivia') {
       const cd = checkCooldown(`trivia_${message.author.id}`, 60000);
       if (cd > 0) return message.reply(`⏳ Give your brain a break! Wait **${cd}s**.`);
@@ -2892,8 +2713,15 @@ client.on('messageCreate', async message => {
       const collector = message.channel.createMessageCollector({ filter, time: 15000 });
 
       let answered = false;
+      const acceptedAnswers = Array.isArray(selected.a) 
+        ? selected.a.map(ans => ans.toLowerCase().trim()) 
+        : [selected.a.toLowerCase().trim()];
+
       collector.on('collect', async m => {
-        if (m.content.toLowerCase().includes(selected.a.toLowerCase())) {
+        const userMsg = m.content.toLowerCase().trim();
+        const isCorrect = acceptedAnswers.some(ans => userMsg.includes(ans));
+
+        if (isCorrect) {
           answered = true;
           collector.stop();
           const winner = await getUser(m.author.id);
@@ -2906,7 +2734,8 @@ client.on('messageCreate', async message => {
 
       collector.on('end', () => {
         if (!answered) {
-          message.channel.send(`⏰ **Time is up!** The correct answer was **${selected.a}**.`);
+          const displayAnswer = Array.isArray(selected.a) ? selected.a.join(' / ') : selected.a;
+          message.channel.send(`⏰ **Time is up!** The correct answer was **${displayAnswer}**.`);
         }
       });
       return;
@@ -2915,8 +2744,6 @@ client.on('messageCreate', async message => {
     // ==========================================
     // MODULE: ROMANCE
     // ==========================================
-
-    // PROPOSE (BF/GF)
     if (command === 'propose') {
       const target = message.mentions.users.first();
       if (!target || target.bot || target.id === message.author.id) {
@@ -2971,7 +2798,6 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // MARRY
     if (command === 'marry') {
       const target = message.mentions.users.first();
       if (!target || target.bot || target.id === message.author.id) {
@@ -3026,7 +2852,6 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // DIVORCE
     if (command === 'divorce') {
       const user = await getUser(message.author.id);
       if (!user.spouseId) return message.reply("❌ You are not married to anyone.");
@@ -3045,7 +2870,6 @@ client.on('messageCreate', async message => {
       return message.reply(`💔 <@${message.author.id}> threw the wedding ring into a dumpster and filed for divorce! <@${exId}> you are officially single!`);
     }
 
-    // LOVE (SEND LOVIES)
     if (command === 'love') {
       const user = await getUser(message.author.id);
       if (!user.spouseId) return message.reply("🥀 You can only send lovies to your married spouse! Use `cry!marry` first.");
@@ -3064,7 +2888,6 @@ client.on('messageCreate', async message => {
       return message.reply(`💖 <@${message.author.id}> sent warm starlight lovies to <@${user.spouseId}>! Total Lovies: **${user.loviesCount}** ❤️`);
     }
 
-    // PARTNER
     if (command === 'partner') {
       const target = message.mentions.users.first() || message.author;
       const user = await getUser(target.id);
@@ -3084,7 +2907,6 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [pEmbed] });
     }
 
-    // CELESTIAL SHIP COMMAND (DUAL MENTION FIX)
     if (command === 'ship') {
       if (!isVip) {
         const cd = checkCooldown(`ship_${message.author.id}`, 180000);
@@ -3117,7 +2939,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // MODULE: SOCIAL INTERACTIONS (1-MIN CD)
+    // MODULE: SOCIAL INTERACTIONS
     // ==========================================
     const SOCIAL_ACTIONS = {
       slap: { gif: 'https://media.tenor.com/Ws6Dm1ZW_vMAAAAC/anime-slap.gif', text: (a, t) => `💥 <@${a}> slapped <@${t}> into another dimension!` },
@@ -3154,8 +2976,6 @@ client.on('messageCreate', async message => {
     // ==========================================
     // MODULE: FUN & IDENTITY
     // ==========================================
-
-    // GAY GAUGE
     if (command === 'gay') {
       if (!isVip) {
         const cd = checkCooldown(`gay_${message.author.id}`, 180000);
@@ -3175,14 +2995,13 @@ client.on('messageCreate', async message => {
       const embed = new EmbedBuilder()
         .setTitle('✧ PRISM SPECTRUM SCAN ✧')
         .setColor('#ff70a6')
-        .setDescription(`Target: <@${target.id}>\n**Score:** **${pct}%**\n${desc}`)
+        .setDescription(`Target: <@${target.id}>\n**Score:** **${pct}\%**\n${desc}`)
         .setImage('attachment://prism.png')
         .setFooter({ text: 'Rerolls freely on every scan' });
 
       return message.reply({ embeds: [embed], files: [attach] });
     }
 
-    // LESBIAN GAUGE
     if (command === 'lesbian') {
       if (!isVip) {
         const cd = checkCooldown(`les_${message.author.id}`, 180000);
@@ -3202,14 +3021,13 @@ client.on('messageCreate', async message => {
       const embed = new EmbedBuilder()
         .setTitle('✧ SUNSET AURA GAUGE ✧')
         .setColor('#ff9770')
-        .setDescription(`Target: <@${target.id}>\n**Score:** **${pct}%**\n${desc}`)
+        .setDescription(`Target: <@${target.id}>\n**Score:** **${pct}\%**\n${desc}`)
         .setImage('attachment://sunset.png')
         .setFooter({ text: 'Rerolls freely on every scan' });
 
       return message.reply({ embeds: [embed], files: [attach] });
     }
 
-    // UNIVERSAL RATE
     if (command === 'rate') {
       if (!isVip) {
         const cd = checkCooldown(`rate_${message.author.id}`, 180000);
@@ -3240,7 +3058,6 @@ client.on('messageCreate', async message => {
       return message.reply({ embeds: [embed], files: [attach] });
     }
 
-    // ZERO-BET ANIMATED COINFLIP (cry!cf, cry!coinflip)
     if (command === 'cf' || command === 'coinflip') {
       const animMsg = await message.channel.send('🪙 *Tossing the crystal coin into the air...* ⚪');
       
@@ -3265,7 +3082,6 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // ZERO-BET ANIMATED DICE (cry!dice, cry!roll)
     if (command === 'dice' || command === 'roll') {
       const animMsg = await message.channel.send('🎲 *Shaking the dice in the cup...* ⚅ ⚂');
 
@@ -3279,7 +3095,7 @@ client.on('messageCreate', async message => {
         const resultEmbed = new EmbedBuilder()
           .setColor('#a8c5a5')
           .setTitle('✧ The Die Settles! ✧')
-          .setDescription(`You rolled a **[ ${roll} ]** ${diceEmojis[roll]}`)
+          .setDescription(`You rolled a **[ ${roll} ]**${diceEmojis[roll]}`)
           .setFooter({ text: `Rolled by ${message.author.username}` });
 
         await animMsg.edit({ content: null, embeds: [resultEmbed] }).catch(() => {});
@@ -3287,7 +3103,6 @@ client.on('messageCreate', async message => {
       return;
     }
 
-    // CRYSTALSTORM (3-HR GLOBAL CD)
     if (command === 'crystalstorm') {
       const cd = checkCooldown('crystalstorm_global', 10800000);
       if (cd > 0 && !isVip) return message.reply(`⏳ The celestial heavens are quiet! Global Cooldown: **${formatDuration(cd)}**.`);
@@ -3305,17 +3120,15 @@ client.on('messageCreate', async message => {
       return message.channel.send(`⚡ **CRYSTALSTORM UNLEASHED!**\nThe heavens opened up and showered **500 ${cryCoin}** directly onto <@${luckyMember.id}>!`);
     }
 
-    // PICKUP
     if (command === 'pickup') {
       const cd = checkCooldown(`pickup_${message.author.id}`, 60000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Save some charm for later! Wait **${cd}s**.`);
 
       const target = message.mentions.users.first();
       const line = PICKUP_BANK[Math.floor(Math.random() * PICKUP_BANK.length)];
-      return message.channel.send(target ? `<@${target.id}>, ${line} ✨` : `${line} ✨`);
+      return message.channel.send(target ? `<@${target.id}>,${line} ✨` : `${line} ✨`);
     }
 
-    // ROAST (WITH MOTHER'S SHIELD FOR VIP)
     if (command === 'roast') {
       const cd = checkCooldown(`roast_${message.author.id}`, 60000);
       if (cd > 0 && !isVip) return message.reply(`⏳ Cool down! Wait **${cd}s**.`);
@@ -3327,10 +3140,9 @@ client.on('messageCreate', async message => {
       }
 
       const roast = ROAST_BANK[Math.floor(Math.random() * ROAST_BANK.length)];
-      return message.channel.send(`🔥 <@${target.id}> ${roast}`);
+      return message.channel.send(`🔥 <@${target.id}>${roast}`);
     }
 
-    // ANONYMOUS (3 MSGS PER USER + ADMIN AUDIT LOG)
     if (command === 'anonymous') {
       const user = await getUser(message.author.id);
       if (user.anonymousCount >= 3 && !isVip) {
@@ -3376,242 +3188,6 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // MODULE: ADMIN COMMANDS
-    // ==========================================
-
-        // SETUP REACTION ROLES (ALL 6 EMBEDS WITH LIVE EMOJI REACTIONS)
-    if (command === 'setup-roles') {
-      if (!message.member.permissions.has(PermissionFlagsBits.Administrator) && !isVip) {
-        return message.reply('❌ You need Administrator permissions to deploy self-roles.');
-      }
-
-      const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-      try {
-        // 1. Gender / Pronouns
-        const genderEmbed = new EmbedBuilder()
-          .setColor('#f6c6ea')
-          .setTitle('🌸 Pronouns & Gender')
-          .setDescription(
-            'React below to claim your pronouns:\n\n' +
-            '🌸 • <@&1558480429273583678> — `She / Her`\n' +
-            '🌿 • <@&1558480593073868841> — `He / Him`\n' +
-            '🌙 • <@&1558480712695414874> — `They / Them`\n' +
-            '✨ • <@&1558480820874780722> — `Any / All`'
-          );
-        const m1 = await message.channel.send({ embeds: [genderEmbed] });
-        for (const emoji of ['🌸', '🌿', '🌙', '✨']) {
-          await m1.react(emoji);
-          await wait(250);
-        }
-        await wait(600);
-
-        // 2. Age Bracket
-        const ageEmbed = new EmbedBuilder()
-          .setColor('#caffbf')
-          .setTitle('🪷 Age Bracket')
-          .setDescription(
-            'React below to claim your age group:\n\n' +
-            '🐣 • <@&1558481003746697266> — `13 – 17`\n' +
-            '🪷 • <@&1558481095446495233> — `18 – 21`\n' +
-            '☕ • <@&1558481253370433536> — `21+`'
-          );
-        const m2 = await message.channel.send({ embeds: [ageEmbed] });
-        for (const emoji of ['🐣', '🪷', '☕']) {
-          await m2.react(emoji);
-          await wait(250);
-        }
-        await wait(600);
-
-        // 3. Region / Continent
-        const regionEmbed = new EmbedBuilder()
-          .setColor('#9bf6ff')
-          .setTitle('🌏 Region & Continent')
-          .setDescription(
-            'React below to show where you are logging in from:\n\n' +
-            '🌏 • <@&1558481398069727362> — `Asia`\n' +
-            '🌍 • <@&1558481498347413584> — `Europe`\n' +
-            '🌎 • <@&1558481607093125200> — `Americas`\n' +
-            '🏝️ • <@&1558482222242209904> — `Other`'
-          );
-        const m3 = await message.channel.send({ embeds: [regionEmbed] });
-        for (const emoji of ['🌏', '🌍', '🌎', '🏝️']) {
-          await m3.react(emoji);
-          await wait(250);
-        }
-        await wait(600);
-
-        // 4. Relationship Status
-        const relEmbed = new EmbedBuilder()
-          .setColor('#ffa6c9')
-          .setTitle('💌 Relationship Status')
-          .setDescription(
-            'React below to display your status on your profile:\n\n' +
-            '💙 • <@&1558482393395101897> — `Single`\n' +
-            '💖 • <@&1558482471891247204> — `Taken`\n' +
-            '💍 • <@&1558482562593067089> — `Married`\n' +
-            '🍿 • <@&1558482718705188874> — `Third Wheeler`\n' +
-            '💌 • <@&1558482810136694844> — `Hopeless Romantic`\n' +
-            '🥀 • <@&1558482907755053286> — `I Give Up`'
-          );
-        const m4 = await message.channel.send({ embeds: [relEmbed] });
-        for (const emoji of ['💙', '💖', '💍', '🍿', '💌', '🥀']) {
-          await m4.react(emoji);
-          await wait(250);
-        }
-        await wait(600);
-
-        // 5. Aesthetic Palette
-        const aestheticEmbed = new EmbedBuilder()
-          .setColor('#c8a2c8')
-          .setTitle('🌙 Aesthetic Name Palette')
-          .setDescription(
-            'React below to change your name color in chat:\n\n' +
-            '🔮 • <@&1558483084884574411> — `Moonlight`\n' +
-            '☁️ • <@&1558483165293707344> — `Daydream`\n' +
-            '🩷 • <@&1558483247237828681> — `Rosewater`\n' +
-            '💜 • <@&1558483493644668998> — `Ethereal`\n' +
-            '🌌 • <@&1558483592378581113> — `Blue Hour`\n' +
-            '🌷 • <@&1558483731701047406> — `Lover`'
-          );
-        const m5 = await message.channel.send({ embeds: [aestheticEmbed] });
-        for (const emoji of ['🔮', '☁️', '🩷', '💜', '🌌', '🌷']) {
-          await m5.react(emoji);
-          await wait(250);
-        }
-        await wait(600);
-
-        // 6. Notifications
-        const notifEmbed = new EmbedBuilder()
-          .setColor('#f59e0b')
-          .setTitle('🔔 Server Notifications')
-          .setDescription(
-            'React below to opt-in or out of specific event pings:\n\n' +
-            '🔔 • <@&1558483922654863370> — `Arise`\n' +
-            '🎮 • <@&1558484017710629075> — `Gaming`\n' +
-            '🎬 • <@&1558484104843100190> — `Movie`\n' +
-            '⛩️ • <@&1558484202184515734> — `Anime`'
-          );
-        const m6 = await message.channel.send({ embeds: [notifEmbed] });
-        for (const emoji of ['🔔', '🎮', '🎬', '⛩️']) {
-          await m6.react(emoji);
-          await wait(250);
-        }
-
-        await message.delete().catch(() => {});
-      } catch (err) {
-        console.error('Reaction Role Deployment Error:', err);
-        message.channel.send(`⚠️ Error deploying reaction roles: \`${err.message}\``);
-      }
-      return;
-    }
-
-
-    // ADMIN POLL (cry!poll)
-    if (command === 'poll') {
-      if (!message.member.permissions.has(PermissionFlagsBits.Administrator) && !isVip) {
-        return message.reply('❌ You need Administrator permissions to start a community poll.');
-      }
-
-      const fullText = message.content.slice(PREFIX_REGEX.exec(message.content)[0].length + command.length).trim();
-      if (!fullText) {
-        return message.reply('Usage: `cry!poll <Question>` OR `cry!poll "Question" "Option 1" "Option 2" ...`');
-      }
-
-      const matches = fullText.match(/"([^"]+)"/g);
-
-      if (!matches || matches.length === 1) {
-        const question = matches ? matches[0].replace(/"/g, '') : fullText;
-        const pollEmbed = new EmbedBuilder()
-          .setColor('#9370db')
-          .setTitle('📊 Server Community Poll')
-          .setDescription(`**${question}**\n\nReact with ✅ for **Yes** or ❌ for **No**!`)
-          .setFooter({ text: `Poll initiated by ${message.author.username}` })
-          .setTimestamp();
-
-        const pollMsg = await message.channel.send({ embeds: [pollEmbed] });
-        await pollMsg.react('✅');
-        await pollMsg.react('❌');
-        return message.delete().catch(() => {});
-      }
-
-      const question = matches[0].replace(/"/g, '');
-      const options = matches.slice(1).map(opt => opt.replace(/"/g, ''));
-
-      if (options.length > 9) {
-        return message.reply('❌ Polls support a maximum of 9 options.');
-      }
-
-      const numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
-      let descriptionText = `**${question}**\n\n`;
-
-      options.forEach((opt, idx) => {
-        descriptionText += `${numberEmojis[idx]} ${opt}\n`;
-      });
-
-      const pollEmbed = new EmbedBuilder()
-        .setColor('#9370db')
-        .setTitle('📊 Server Community Poll')
-        .setDescription(descriptionText)
-        .setFooter({ text: `Poll initiated by ${message.author.username}` })
-        .setTimestamp();
-
-      const pollMsg = await message.channel.send({ embeds: [pollEmbed] });
-      for (let i = 0; i < options.length; i++) {
-        await pollMsg.react(numberEmojis[i]);
-      }
-      return message.delete().catch(() => {});
-    }
-
-    // ADD CRYSTALS
-    if (command === 'addcrystals' || command === 'ac') {
-      if (!message.member.permissions.has(PermissionFlagsBits.Administrator) && !isVip) {
-        return message.reply("❌ Administrator permissions required!");
-      }
-
-      const target = message.mentions.users.first();
-      const amt = parseInt(args[1], 10);
-
-      if (!target || isNaN(amt) || amt <= 0) return message.reply("⚠️ Usage: `cry!ac @user <amount>`");
-
-      const tUser = await getUser(target.id);
-      tUser.balance += amt;
-      await tUser.save();
-
-      return message.reply(`✅ Granted **+${amt.toLocaleString()} ${cryCoin}** to <@${target.id}>!`);
-    }
-
-    // REMOVE CRYSTALS
-    if (command === 'removecrystals' || command === 'rc') {
-      if (!message.member.permissions.has(PermissionFlagsBits.Administrator) && !isVip) {
-        return message.reply("❌ Administrator permissions required!");
-      }
-
-      const target = message.mentions.users.first();
-      const amt = parseInt(args[1], 10);
-
-      if (!target || isNaN(amt) || amt <= 0) return message.reply("⚠️ Usage: `cry!rc @user <amount>`");
-
-      const tUser = await getUser(target.id);
-      tUser.balance = Math.max(0, tUser.balance - amt);
-      await tUser.save();
-
-      return message.reply(`✅ Deducted **-${amt.toLocaleString()} ${cryCoin}** from <@${target.id}>!`);
-    }
-
-  } catch (error) {
-    console.error('Command Execution Error:', error);
-    return message.reply("⚠️ An astral disruption occurred while executing this command.");
-  }
-});
-
-    // Staff Permission Helper (Admin, Moderate, ManageMessages, or VIP)
-    const isStaff = message.member.permissions.has(PermissionFlagsBits.Administrator) ||
-                    message.member.permissions.has(PermissionFlagsBits.ModerateMembers) ||
-                    message.member.permissions.has(PermissionFlagsBits.ManageMessages) ||
-                    isVip;
-
-    // ==========================================
     // MODULE: AFK SYSTEM
     // ==========================================
     if (command === 'afk') {
@@ -3627,7 +3203,6 @@ client.on('messageCreate', async message => {
       const sniped = global.snipes.get(message.channel.id);
       if (!sniped) return message.reply("💨 There are no recently deleted messages in this channel!");
 
-      // Hierarchy Guard: Lower-role cannot snipe higher-role members
       if (!isVip && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
         if (sniped.member && sniped.member.roles.highest.position >= message.member.roles.highest.position && sniped.author.id !== message.author.id) {
           return message.reply("🔒 **Protected Starlight!** You cannot snipe messages deleted by members with an equal or higher role than you.");
@@ -3652,7 +3227,7 @@ client.on('messageCreate', async message => {
     // MODULE: BIRTHDAY CALENDAR
     // ==========================================
     if (command === 'setbirthday') {
-      const input = args[0]; // DD/MM
+      const input = args[0];
       if (!input || !input.includes('/')) return message.reply("Usage: `cry!setbirthday DD/MM` (e.g., `cry!setbirthday 14/08`)");
 
       const [dStr, mStr] = input.split('/');
@@ -3700,7 +3275,6 @@ client.on('messageCreate', async message => {
 
     if (command === 'birthdays') {
       const allBdays = await User.find({ 'birthday.day': { $ne: null } });
-      const currentMonth = new Date().getMonth() + 1;
 
       const upcoming = allBdays
         .filter(u => message.guild.members.cache.has(u.userId))
@@ -3755,40 +3329,39 @@ client.on('messageCreate', async message => {
       }
     }
 
-    if (command === 'timeout' || command === 'mute') {
+    if (command === 'mute' || command === 'timeout') {
       if (!isStaff) return message.reply("❌ Staff permissions required.");
       const target = message.mentions.members.first();
-      const durationStr = args[1]; // 10m, 1h, 1d
+      const durationStr = args[1];
       const reason = args.slice(2).join(' ') || 'No reason provided';
 
-      if (!target || !durationStr) return message.reply("Usage: `cry!timeout @user <10m/1h/1d> [reason]`");
+      if (!target || !durationStr) return message.reply(`Usage: \`cry!${command} @user <10m/1h/1d> [reason]\``);
 
-      // Calculate milliseconds
       let ms = 0;
-      if (durationStr.endsWith('m')) ms = parseInt(durationStr) * 60 * 1000;
-      else if (durationStr.endsWith('h')) ms = parseInt(durationStr) * 3600 * 1000;
-      else if (durationStr.endsWith('d')) ms = parseInt(durationStr) * 86400 * 1000;
+      if (durationStr.endsWith('m')) ms = parseInt(durationStr, 10) * 60 * 1000;
+      else if (durationStr.endsWith('h')) ms = parseInt(durationStr, 10) * 3600 * 1000;
+      else if (durationStr.endsWith('d')) ms = parseInt(durationStr, 10) * 86400 * 1000;
 
-      if (!ms || ms > 28 * 86400 * 1000) return message.reply("❌ Provide a valid duration (e.g., `10m`, `1h`, `7d`). Max 28 days.");
+      if (!ms || isNaN(ms) || ms > 28 * 86400 * 1000) return message.reply("❌ Provide a valid duration (e.g., `10m`, `1h`, `7d`). Max 28 days.");
 
       try {
         await target.timeout(ms, reason);
-        return message.channel.send(`🔇 Timed out **${target.user.tag}** for **${durationStr}** \vert{} Reason: *${reason}*`);
+        return message.channel.send(`🔇 Muted / Timed out **${target.user.tag}** for **${durationStr}** \vert{} Reason: *${reason}*`);
       } catch (err) {
-        return message.reply(`❌ Could not timeout member: \`${err.message}\``);
+        return message.reply(`❌ Could not mute member: \`${err.message}\``);
       }
     }
 
-    if (command === 'untimeout' || command === 'unmute') {
+    if (command === 'unmute' || command === 'untimeout') {
       if (!isStaff) return message.reply("❌ Staff permissions required.");
       const target = message.mentions.members.first();
-      if (!target) return message.reply("Usage: `cry!untimeout @user`");
+      if (!target) return message.reply(`Usage: \`cry!${command} @user\``);
 
       try {
         await target.timeout(null);
-        return message.channel.send(`🔊 Removed timeout from **${target.user.tag}**.`);
+        return message.channel.send(`🔊 Removed mute / timeout from **${target.user.tag}**.`);
       } catch (err) {
-        return message.reply(`❌ Could not remove timeout: \`${err.message}\``);
+        return message.reply(`❌ Could not remove mute: \`${err.message}\``);
       }
     }
 
@@ -3906,6 +3479,224 @@ client.on('messageCreate', async message => {
 
       return message.channel.send({ embeds: [uEmbed] });
     }
+
+    // ==========================================
+    // MODULE: ADMIN COMMANDS
+    // ==========================================
+    if (command === 'setup-roles') {
+      if (!message.member.permissions.has(PermissionFlagsBits.Administrator) && !isVip) {
+        return message.reply('❌ You need Administrator permissions to deploy self-roles.');
+      }
+
+      const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+      try {
+        const genderEmbed = new EmbedBuilder()
+          .setColor('#f6c6ea')
+          .setTitle('🌸 Pronouns & Gender')
+          .setDescription(
+            'React below to claim your pronouns:\n\n' +
+            '🌸 • <@&1558480429273583678> — `She / Her`\n' +
+            '🌿 • <@&1558480593073868841> — `He / Him`\n' +
+            '🌙 • <@&1558480712695414874> — `They / Them`\n' +
+            '✨ • <@&1558480820874780722> — `Any / All`'
+          );
+        const m1 = await message.channel.send({ embeds: [genderEmbed] });
+        for (const emoji of ['🌸', '🌿', '🌙', '✨']) {
+          await m1.react(emoji);
+          await wait(250);
+        }
+        await wait(600);
+
+        const ageEmbed = new EmbedBuilder()
+          .setColor('#caffbf')
+          .setTitle('🪷 Age Bracket')
+          .setDescription(
+            'React below to claim your age group:\n\n' +
+            '🐣 • <@&1558481003746697266> — `13 – 17`\n' +
+            '🪷 • <@&1558481095446495233> — `18 – 21`\n' +
+            '☕ • <@&1558481253370433536> — `21+`'
+          );
+        const m2 = await message.channel.send({ embeds: [ageEmbed] });
+        for (const emoji of ['🐣', '🪷', '☕']) {
+          await m2.react(emoji);
+          await wait(250);
+        }
+        await wait(600);
+
+        const regionEmbed = new EmbedBuilder()
+          .setColor('#9bf6ff')
+          .setTitle('🌏 Region & Continent')
+          .setDescription(
+            'React below to show where you are logging in from:\n\n' +
+            '🌏 • <@&1558481398069727362> — `Asia`\n' +
+            '🌍 • <@&1558481498347413584> — `Europe`\n' +
+            '🌎 • <@&1558481607093125200> — `Americas`\n' +
+            '🏝️ • <@&1558482222242209904> — `Other`'
+          );
+        const m3 = await message.channel.send({ embeds: [regionEmbed] });
+        for (const emoji of ['🌏', '🌍', '🌎', '🏝️']) {
+          await m3.react(emoji);
+          await wait(250);
+        }
+        await wait(600);
+
+        const relEmbed = new EmbedBuilder()
+          .setColor('#ffa6c9')
+          .setTitle('💌 Relationship Status')
+          .setDescription(
+            'React below to display your status on your profile:\n\n' +
+            '💙 • <@&1558482393395101897> — `Single`\n' +
+            '💖 • <@&1558482471891247204> — `Taken`\n' +
+            '💍 • <@&1558482562593067089> — `Married`\n' +
+            '🍿 • <@&1558482718705188874> — `Third Wheeler`\n' +
+            '💌 • <@&1558482810136694844> — `Hopeless Romantic`\n' +
+            '🥀 • <@&1558482907755053286> — `I Give Up`'
+          );
+        const m4 = await message.channel.send({ embeds: [relEmbed] });
+        for (const emoji of ['💙', '💖', '💍', '🍿', '💌', '🥀']) {
+          await m4.react(emoji);
+          await wait(250);
+        }
+        await wait(600);
+
+        const aestheticEmbed = new EmbedBuilder()
+          .setColor('#c8a2c8')
+          .setTitle('🌙 Aesthetic Name Palette')
+          .setDescription(
+            'React below to change your name color in chat:\n\n' +
+            '🔮 • <@&1558483084884574411> — `Moonlight`\n' +
+            '☁️ • <@&1558483165293707344> — `Daydream`\n' +
+            '🩷 • <@&1558483247237828681> — `Rosewater`\n' +
+            '💜 • <@&1558483493644668998> — `Ethereal`\n' +
+            '🌌 • <@&1558483592378581113> — `Blue Hour`\n' +
+            '🌷 • <@&1558483731701047406> — `Lover`'
+          );
+        const m5 = await message.channel.send({ embeds: [aestheticEmbed] });
+        for (const emoji of ['🔮', '☁️', '🩷', '💜', '🌌', '🌷']) {
+          await m5.react(emoji);
+          await wait(250);
+        }
+        await wait(600);
+
+        const notifEmbed = new EmbedBuilder()
+          .setColor('#f59e0b')
+          .setTitle('🔔 Server Notifications')
+          .setDescription(
+            'React below to opt-in or out of specific event pings:\n\n' +
+            '🔔 • <@&1558483922654863370> — `Arise`\n' +
+            '🎮 • <@&1558484017710629075> — `Gaming`\n' +
+            '🎬 • <@&1558484104843100190> — `Movie`\n' +
+            '⛩️ • <@&1558484202184515734> — `Anime`'
+          );
+        const m6 = await message.channel.send({ embeds: [notifEmbed] });
+        for (const emoji of ['🔔', '🎮', '🎬', '⛩️']) {
+          await m6.react(emoji);
+          await wait(250);
+        }
+
+        await message.delete().catch(() => {});
+      } catch (err) {
+        console.error('Reaction Role Deployment Error:', err);
+        message.channel.send(`⚠️ Error deploying reaction roles: \`${err.message}\``);
+      }
+      return;
+    }
+
+    if (command === 'poll') {
+      if (!message.member.permissions.has(PermissionFlagsBits.Administrator) && !isVip) {
+        return message.reply('❌ You need Administrator permissions to start a community poll.');
+      }
+
+      const fullText = message.content.slice(PREFIX_REGEX.exec(message.content)[0].length + command.length).trim();
+      if (!fullText) {
+        return message.reply('Usage: `cry!poll <Question>` OR `cry!poll "Question" "Option 1" "Option 2" ...`');
+      }
+
+      const matches = fullText.match(/["“]([^"”]+)["”]/g);
+
+      if (!matches || matches.length === 1) {
+        const question = matches ? matches[0].replace(/["“”]/g, '') : fullText;
+        const pollEmbed = new EmbedBuilder()
+          .setColor('#9370db')
+          .setTitle('📊 Server Community Poll')
+          .setDescription(`**${question}**\n\nReact with ✅ for **Yes** or ❌ for **No**!`)
+          .setFooter({ text: `Poll initiated by ${message.author.username}` })
+          .setTimestamp();
+
+        const pollMsg = await message.channel.send({ embeds: [pollEmbed] });
+        await pollMsg.react('✅');
+        await pollMsg.react('❌');
+        return message.delete().catch(() => {});
+      }
+
+      const question = matches[0].replace(/["“”]/g, '');
+      const options = matches.slice(1).map(opt => opt.replace(/["“”]/g, ''));
+
+      if (options.length > 9) {
+        return message.reply('❌ Polls support a maximum of 9 options.');
+      }
+
+      const numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
+      let descriptionText = `**${question}**\n\n`;
+
+      options.forEach((opt, idx) => {
+        descriptionText += `${numberEmojis[idx]} ${opt}\n`;
+      });
+
+      const pollEmbed = new EmbedBuilder()
+        .setColor('#9370db')
+        .setTitle('📊 Server Community Poll')
+        .setDescription(descriptionText)
+        .setFooter({ text: `Poll initiated by ${message.author.username}` })
+        .setTimestamp();
+
+      const pollMsg = await message.channel.send({ embeds: [pollEmbed] });
+      for (let i = 0; i < options.length; i++) {
+        await pollMsg.react(numberEmojis[i]);
+      }
+      return message.delete().catch(() => {});
+    }
+
+    if (command === 'addcrystals' || command === 'ac') {
+      if (!message.member.permissions.has(PermissionFlagsBits.Administrator) && !isVip) {
+        return message.reply("❌ Administrator permissions required!");
+      }
+
+      const target = message.mentions.users.first();
+      const amt = parseInt(args[1], 10);
+
+      if (!target || isNaN(amt) || amt <= 0) return message.reply("⚠️ Usage: `cry!ac @user <amount>`");
+
+      const tUser = await getUser(target.id);
+      tUser.balance += amt;
+      await tUser.save();
+
+      return message.reply(`✅ Granted **+${amt.toLocaleString()} ${cryCoin}** to <@${target.id}>!`);
+    }
+
+    if (command === 'removecrystals' || command === 'rc') {
+      if (!message.member.permissions.has(PermissionFlagsBits.Administrator) && !isVip) {
+        return message.reply("❌ Administrator permissions required!");
+      }
+
+      const target = message.mentions.users.first();
+      const amt = parseInt(args[1], 10);
+
+      if (!target || isNaN(amt) || amt <= 0) return message.reply("⚠️ Usage: `cry!rc @user <amount>`");
+
+      const tUser = await getUser(target.id);
+      tUser.balance = Math.max(0, tUser.balance - amt);
+      await tUser.save();
+
+      return message.reply(`✅ Deducted **-${amt.toLocaleString()} ${cryCoin}** from <@${target.id}>!`);
+    }
+
+  } catch (error) {
+    console.error('Command Execution Error:', error);
+    return message.reply("⚠️ An astral disruption occurred while executing this command.");
+  }
+});
 
 // ==========================================
 // 8. INITIALIZATION & DATABASE BOOTSTRAP

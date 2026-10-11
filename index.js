@@ -1673,7 +1673,6 @@ client.on('messageCreate', async message => {
         row2.components.forEach(b => b.setDisabled(true));
         helpMsg.edit({ components: [row1, row2] }).catch(() => {});
       });
-      return;
     
 
       const row1 = new ActionRowBuilder().addComponents(
